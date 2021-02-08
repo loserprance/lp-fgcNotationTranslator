@@ -40,17 +40,16 @@ def moveTranslation(toTranslate):
     strengthAbbreviations = ("l", "m", "h", "ex")
     strengthWords = ("Light", "Medium", "Heavy", "EX.")
 
-    formOfAttackAbbreviations = ("p", "k")
-    formOfAttackWords = ("Punch", "Kick")
+    attackTypeAbbreviations = ("p", "k")
+    attackTypeWords = ("Punch", "Kick")
 
-    attackAbbreviations = ("LP", "MP", "HP", "LK", "MK", "HK")
-    attackShortforms = ("Jab", "Short", "Fierce", "Short", "Forward", "Roundhouse")
+    attackShortforms = {"LP":"Jab", "MP":"Short", "HP":"Fierce", "LK":"Short", "MK":"Forward", "HK":"Roundhouse"}
 
+    directionNumbers = ("1", "2", "3", "4", "5", "6", "7", "8", "9")
     directionAbbreviations = ("d/b", "d", "d/f", "b", "n", "f", "u/b", "u", "u/f")
     directionWords = ("down-back", "down", "down-forward", "back", "neutral", "forward", "up-back", "up", "up-forward")
     directionStates = ("Crouching", "Crouching", "Crouching", "Back", "Standing", "Towards", "Jumping", "Neutral Jumping", "Jumping")
     directionStatesAbbreviations = ("cr.", "cr.", "cr.", "b.", "s.", "f.", "j.", "nj.", "j.")
-    directionNumbers = ("1", "2", "3", "4", "5", "6", "7", "8", "9")
 
     motionAbbreviations = ("qcf", "qcb", "hcf", "hcb", "dp", "rdp", "360", "tk", "bdbd", "fdfd")
     motionNumbers = ("236", "214", "41236", "63214", "623", "421", "6321478", "2369", "412", "632")
@@ -90,23 +89,85 @@ def moveTranslation(toTranslate):
             print("Bad syntax; uneven amount of brackets")
             return;
 
-    # for every possible button in this notation: LP, HK, etc...
-    for button in attackAbbreviations:
-        # check every individual move for the number notation for a direction + a button (ie. 2HK, 5MP)
-        for move in split:
-            if (button in move):
-                if (("[" in move or "]" in move or "(" in move or ")" in move) and len(move) != 3):
-                    return;
-                else:
-                    attackState = directionStates[directionNumbers.index(move[0])]
-                    attackWord = strengthWords[strengthAbbreviations.index(move[1].lower())] + " " + formOfAttackWords[formOfAttackAbbreviations.index(move[2].lower())]
-                    attackName = attackShortforms[attackAbbreviations.index(move[1:])]
+    # for every individual move
+    for move in split:
+        # if string contains a charge move of some kind (use of brackets [] )
+        if (("[" in move or "]" in move)):
+            chargeHoldDirection, chargeReleaseDirection = move[1], move[3]
 
-                    print(attackState + " " + attackWord + " / " + attackState + " " + attackName)
+            chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
+            chargeHoldDirectionWord = directionWords[directionNumbers.index(chargeHoldDirection)]
 
-    # if string contains an attack that requires a specific amount of hits (use of parentheses () )
-    # if string contains a charge move of some kind (use of brackets [] )
+            print("Charge hold direction number: " + chargeHoldDirection)
+            print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
+            print("Charge hold direction word: " + chargeHoldDirectionWord)
+            print(" ")
+
+            chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
+            chargeReleaseDirectionWord = directionWords[directionNumbers.index(chargeReleaseDirection)]
+
+            print("Charge release direction number: " + chargeReleaseDirection)
+            print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
+            print("Charge release direction word: " + chargeReleaseDirectionWord)
+            print(" ")
+
+
+            chargeAttackStrengthWord = strengthWords[strengthAbbreviations.index(move[4].lower())]
+            chargeAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(move[5].lower())]
+            chargeAttackMoveWord = chargeAttackStrengthWord + " " + chargeAttackTypeWord
+            chargeAttackMoveAbbreviation = move[4] + move[5]
+
+            print("Charge attack strength: " + chargeAttackStrengthWord)
+            print("Charge attack type: " + chargeAttackTypeWord)
+            print("Charge attack move word: " + chargeAttackMoveWord)
+            print("Charge attack move abbreviation: " + chargeAttackMoveAbbreviation)
+            print("Charge attack move shortform: " + attackShortforms[chargeAttackMoveAbbreviation])
+            print("----")
+            print(" ")
+
+        elif (len(move) >= 3):
+            attackDirection = move[0]    #(5)HP
+            attackStrength = move[1]     #5(H)P
+            attackType = move[2]         #5H(P)
+            # if string contains an attack that requires a specific amount of hits (use of parentheses () )
+
+            if (("(" in move or ")" in move)):
+                numOfHits = move[4]
+
+            print(attackDirection + attackStrength + attackType)
+
+            attackDirectionAbbreviation = directionAbbreviations[directionNumbers.index(attackDirection)]
+            attackDirectionWord = directionWords[directionNumbers.index(attackDirection)]
+            attackDirectionState = directionStates[directionNumbers.index(attackDirection)]
+            attackDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(attackDirection)]
+
+            attackStrengthWord = strengthWords[strengthAbbreviations.index(attackStrength.lower())]
+            attackTypeWord = attackTypeWords[attackTypeAbbreviations.index(attackType.lower())]
+
+            attackMoveWord = attackStrengthWord + " " + attackTypeWord
+            attackMoveAbbreviation = attackStrengthWord[0] + attackTypeWord[0]
+
+            print("Direction number: " + attackDirection)
+            print("Direction abbreviation: " + attackDirectionAbbreviation)
+            print("Direction word: " + attackDirectionWord)
+            print("Direction state: " + attackDirectionState)
+            print("Direction state abbreviation: " + attackDirectionStateAbbreviation)
+            print(" ")
+
+            print("Attack strength: " + attackStrengthWord)
+            print("Attack type: " + attackTypeWord)
+            print("Attack move word: " + attackMoveWord)
+            print("Attack move abbreviation: " + attackMoveAbbreviation)
+            print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
+            if (("(" in move or ")" in move)):
+                print("Number of hits: " + numOfHits)
+            print("----")
+            print(" ")
+
+        else:
+            print(move + " denied for being under 3 chars")
 
 # toTranslate = "2HP(1) > 236HK, 2LP > [2]8LK"
-toTranslate = "5LP 8MP 2HP 7LK 4MK 6HK"
+# toTranslate = "5LP 8MP 2HP 7LK 4MK 6HK"
+toTranslate = "2HP(1), 4MP(2)"
 moveTranslation(toTranslate)
