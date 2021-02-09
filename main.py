@@ -1,5 +1,31 @@
 # packages/dependancies
 from PIL import Image, ImageFont, ImageDraw
+import sys
+
+# fighting game terminologies...maybe make a dict later?
+attackStrengthAbbreviations = ("l", "m", "h", "ex")
+attackStrengthWords = ("Light", "Medium", "Heavy", "EX.")
+
+attackTypeAbbreviations = ("p", "k")
+attackTypeWords = ("Punch", "Kick")
+
+attackShortforms = {"LP":"Jab", "MP":"Short", "HP":"Fierce", "LK":"Short", "MK":"Forward", "HK":"Roundhouse"}
+
+directionNumbers = ("1", "2", "3", "4", "5", "6", "7", "8", "9")
+directionAbbreviations = ("d/b", "d", "d/f", "b", "n", "f", "u/b", "u", "u/f")
+directionWords = ("down-back", "down", "down-forward", "back", "neutral", "forward", "up-back", "up", "up-forward")
+directionStates = ("Crouching", "Crouching", "Crouching", "Back", "Standing", "Towards", "Jumping", "Neutral Jumping", "Jumping")
+directionStatesAbbreviations = ("cr.", "cr.", "cr.", "b.", "s.", "f.", "j.", "nj.", "j.")
+
+motionAbbreviations = ("qcf", "qcb", "hcf", "hcb", "dp", "rdp", "360", "tk", "bdbd", "fdfd")
+motionNumbers = ("236", "214", "41236", "63214", "623", "421", "6321478", "2369", "412", "632")
+motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle Forward", "Half-Circle Back", "Dragon Punch", "Reverse Dragon Punch", "360", "Tiger Knee", "Back, Down-Back, Down", "Forward, Down-Forward, Down")
+
+'''
+by dustloop rules,
+>   is a catch-all; usually for cancels, i guess
+,   denotes a link
+'''
 
 def canvasCreation():
     # canvas preparation
@@ -18,101 +44,104 @@ def canvasCreation():
     # saving the image
     # newImage.save("./complete.png", "PNG")
 
+def syntaxChecking(string):
+    if ("(" in string or ")" in string):
+        lpi = [i for i, c in enumerate(string) if c == "("]
+        rpi = [i for i, c in enumerate(string) if c == ")"]
+        if (len(lpi) != len(rpi)):
+            print("Syntax error; uneven amount of parentheses in string \"" + string + "\", exiting")
+            # exception later/if necessary
+            sys.exit(1)
+    if ("[" in string or "]" in string):
+        lbi = [i for i, c in enumerate(string) if c == "["]
+        rbi = [i for i, c in enumerate(string) if c == "]"]
+        if (len(lbi) != len(rbi)):
+            print("Syntax error; uneven amount of brackets in string \"" + string + "\", exiting")
+            # exception later/if necessary
+            sys.exit(1)
+
+# will be defined by user; example values
+customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
+
+def customTranslationParsing():
+    # custom translation handling
+    for input in customTranslations.keys():
+        print("Key (input): " + input)
+        print("Value (name): " + customTranslations[input])
+        kp = input.partition("*")
+        print("input.partition(\"*\"): " + str(kp) + "\n")
+
+        # if the partition successfully split the string...
+        if (kp[2] != ""):
+            # charge move handling
+            if ("[" in kp[0] or "]" in kp[0]):
+                lbi = input.index("[")
+                rbi = input.index("]")
+                chargeHoldDirections = (input[lbi+1:rbi]).split("/")
+                chargeReleaseDirections = (input[rbi+1:].partition("*")[0]).split("/")
+
+                chargeAttackStrength = (input[rbi+1:].partition("*")[1])
+                if (chargeAttackStrength == "*"):
+                    chargeAttackStrength = "Any"
+                chargeAttackType = (input[rbi+1:].partition("*")[2])
+
+                # print("Valid charge hold directions: ")
+                # for validChargeHoldDirection in chargeHoldDirections:
+                    # print(validChargeHoldDirection)
+
+                # print("Valid charge release directions:")
+                # for validChargeReleaseDirection in chargeReleaseDirections:
+                    # print(validChargeReleaseDirection)
+
+                # print("Charge attack strength: " + chargeAttackStrength)
+                # print("Charge attack type: " + chargeAttackType)
+
+            # motion input move handling
+            elif (kp[0] in motionNumbers):
+                customMotionInputNumber = kp[0]
+                customMotionInputAttackStrength = kp[1]
+                customMotionInputAttackTypeAbbreviation = (kp[2])[0]
+                customMotionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(customMotionInputAttackTypeAbbreviation.lower())]
+
+                # print("Custom motion input number: " + customMotionInputNumber)
+                # if ("*" in kp[1]):
+                    # print("Custom motion input attack strength: " + "Any")
+                # else:
+                    # print("Custom motion input attack strength: " + customMotionInputAttackStrength)
+                # print("Custom motion input attack type abbreviation: " + customMotionInputAttackTypeAbbreviation)
+                # print("Custom motion input attack type word: " + customMotionInputAttackTypeWord)
+                # print("\n----")
+            # elif ("(" in toTranslate or ")" in toTranslate):
+
 def moveTranslation(toTranslate):
-    '''
-    fighting game notation can express the same move, special move, super, or combo the same way
-    qcf, 236, d,df,f... crouching roundhouse, crouching heavy kick, cr.hk, sweep...
-
-    what should be the options for how the end translation is formatted?
-
-    by dustloop rules,
-    >   is a catch-all; usually for cancels, i guess
-    ,   denotes a link
-
-    jab = lp
-    strong = mp
-    fierce = hp
-    short = lk
-    forward = mk
-    roundhouse = hk
-    '''
-
-    strengthAbbreviations = ("l", "m", "h", "ex")
-    strengthWords = ("Light", "Medium", "Heavy", "EX.")
-
-    attackTypeAbbreviations = ("p", "k")
-    attackTypeWords = ("Punch", "Kick")
-
-    attackShortforms = {"LP":"Jab", "MP":"Short", "HP":"Fierce", "LK":"Short", "MK":"Forward", "HK":"Roundhouse"}
-
-    directionNumbers = ("1", "2", "3", "4", "5", "6", "7", "8", "9")
-    directionAbbreviations = ("d/b", "d", "d/f", "b", "n", "f", "u/b", "u", "u/f")
-    directionWords = ("down-back", "down", "down-forward", "back", "neutral", "forward", "up-back", "up", "up-forward")
-    directionStates = ("Crouching", "Crouching", "Crouching", "Back", "Standing", "Towards", "Jumping", "Neutral Jumping", "Jumping")
-    directionStatesAbbreviations = ("cr.", "cr.", "cr.", "b.", "s.", "f.", "j.", "nj.", "j.")
-
-    motionAbbreviations = ("qcf", "qcb", "hcf", "hcb", "dp", "rdp", "360", "tk", "bdbd", "fdfd")
-    motionNumbers = ("236", "214", "41236", "63214", "623", "421", "6321478", "2369", "412", "632")
-    motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle Forward", "Half-Circle Back", "Dragon Punch", "Reverse Dragon Punch", "360", "Tiger Knee", "Back, Down-Back, Down", "Forward, Down-Forward, Down")
-
-    customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
-
-    print("String: " + str(toTranslate))
-    print("----")
-    split = toTranslate.split(" ")
-    for x in split:
-        print(x)
-    print("----")
-
-    # error checking
-    if ("(" in toTranslate):
-        # finding all occurences of a ( or ) in the string
-        leftParenthesesIndexes = [i for i, c in enumerate(toTranslate) if c == "("]
-        # print(f"Found character '(' at index(es): {leftParenthesesIndexes}")
-
-        rightParenthesesIndexes = [i for i, c in enumerate(toTranslate) if c == ")"]
-        # print(f"Found character ')' at index(es): {rightParenthesesIndexes}")
-
-        if (len(leftParenthesesIndexes) != len(rightParenthesesIndexes)):
-            print("Bad syntax; uneven amount of parentheses")
-            return;
-
-    if ("[" in toTranslate):
-        # finding all occurences of a [ or ] in the string
-        leftBracketsIndexes = [i for i, c in enumerate(toTranslate) if c == "["]
-        # print(f"Found character '[' at index(es): {leftBracketsIndexes}")
-
-        rightBracketsIndexes = [i for i, c in enumerate(toTranslate) if c == "]"]
-        # print(f"Found character ']' at index(es): {rightBracketsIndexes}")
-
-        if (len(leftBracketsIndexes) != len(rightBracketsIndexes)):
-            print("Bad syntax; uneven amount of brackets")
-            return;
 
     # for every individual move
     for move in split:
+        syntaxChecking(move)
+
+        if (len(move) < 3):
+            print(move + " ignored for being < 3\n")
         # if string contains a charge move of some kind (use of brackets [] )
-        if (("[" in move or "]" in move)):
+        elif (("[" in move or "]" in move)):
             chargeHoldDirection, chargeReleaseDirection = move[1], move[3]
 
-            chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
             chargeHoldDirectionWord = directionWords[directionNumbers.index(chargeHoldDirection)]
+            chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
 
             print("Charge hold direction number: " + chargeHoldDirection)
-            print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
             print("Charge hold direction word: " + chargeHoldDirectionWord)
+            print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
             print(" ")
 
-            chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
             chargeReleaseDirectionWord = directionWords[directionNumbers.index(chargeReleaseDirection)]
+            chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
 
             print("Charge release direction number: " + chargeReleaseDirection)
-            print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
             print("Charge release direction word: " + chargeReleaseDirectionWord)
+            print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
             print(" ")
 
-
-            chargeAttackStrengthWord = strengthWords[strengthAbbreviations.index(move[4].lower())]
+            chargeAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(move[4].lower())]
             chargeAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(move[5].lower())]
             chargeAttackMoveWord = chargeAttackStrengthWord + " " + chargeAttackTypeWord
             chargeAttackMoveAbbreviation = move[4] + move[5]
@@ -124,8 +153,8 @@ def moveTranslation(toTranslate):
             print("Charge attack move shortform: " + attackShortforms[chargeAttackMoveAbbreviation])
             print("----")
             print(" ")
+        elif ((len(move) == 3) or ("(" in move or ")" in move)):
 
-        elif (len(move) >= 3):
             attackDirection = move[0]    #(5)HP
             attackStrength = move[1]     #5(H)P
             attackType = move[2]         #5H(P)
@@ -134,14 +163,14 @@ def moveTranslation(toTranslate):
             if (("(" in move or ")" in move)):
                 numOfHits = move[4]
 
-            print(attackDirection + attackStrength + attackType)
 
+            print(move)
             attackDirectionAbbreviation = directionAbbreviations[directionNumbers.index(attackDirection)]
             attackDirectionWord = directionWords[directionNumbers.index(attackDirection)]
             attackDirectionState = directionStates[directionNumbers.index(attackDirection)]
             attackDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(attackDirection)]
 
-            attackStrengthWord = strengthWords[strengthAbbreviations.index(attackStrength.lower())]
+            attackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(attackStrength.lower())]
             attackTypeWord = attackTypeWords[attackTypeAbbreviations.index(attackType.lower())]
 
             attackMoveWord = attackStrengthWord + " " + attackTypeWord
@@ -165,9 +194,45 @@ def moveTranslation(toTranslate):
             print(" ")
 
         else:
-            print(move + " denied for being under 3 chars")
+            # motion parsing
+            try:
+                if (len(move) != 3 and int(move[0:2]) > 9):
+                    for element in attackStrengthAbbreviations:
 
-# toTranslate = "2HP(1) > 236HK, 2LP > [2]8LK"
-# toTranslate = "5LP 8MP 2HP 7LK 4MK 6HK"
-toTranslate = "2HP(1), 4MP(2)"
-moveTranslation(toTranslate)
+                        if (move.partition(element.upper())[2] != ""):
+                            motionInputNumber = move.partition(element.upper())[0]            # (236)LK,
+                            motionInputAttackStrengthAbbreviation = move.partition(element.upper())[1]    # 236(L)K,
+                            motionInputAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(motionInputAttackStrengthAbbreviation.lower())]
+                            motionInputAttackTypeAbbreviation = (move.partition(element.upper())[2])[0]       # 236L(K),
+                            motionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(motionInputAttackTypeAbbreviation.lower())]
+
+                            motionInputAbbreviation = motionAbbreviations[(motionNumbers.index(motionInputNumber))]
+                            motionInputWord = motionWords[(motionNumbers.index(motionInputNumber))]
+
+                            print("Motion input in number notation: " + motionInputNumber)
+                            print("Motion input in abbreviated notation: " + motionInputAbbreviation)
+                            print("Motion input in word notation: " + motionInputWord)
+
+                            print("Motion input attack strength abbreviation: " + motionInputAttackStrengthAbbreviation)
+                            print("Motion input attack strength word: " + motionInputAttackStrengthWord)
+                            print("Motion input attack type abbreviation: " + motionInputAttackTypeAbbreviation)
+                            print("Motion input attack type word: " + motionInputAttackTypeWord)
+
+            except Exception:
+                pass
+                # .. not a motion
+
+
+toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
+# toTranslate = "236HP"
+# toTranslate = "2HP 5HP"
+
+customTranslationParsing()
+# moveTranslation(toTranslate)
+
+print("String: " + str(toTranslate))
+print("----")
+split = toTranslate.split(" ")
+for x in split:
+    print(x)
+print("----")
