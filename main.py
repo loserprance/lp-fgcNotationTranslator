@@ -78,83 +78,6 @@ def parseMoveType(move):
         else:
             return("button")
 
-def chargeParsing(move):
-    lbi = move.index("[")+1
-    rbi = move.index("]")
-
-    chargeHoldDirection = move[lbi:rbi]
-    chargeHoldDirectionWord = directionWords[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionState = directionStates[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeHoldDirection)]
-
-    print("Charge hold direction number: " + chargeHoldDirection)
-    print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
-    print("Charge hold direction word: " + chargeHoldDirectionWord)
-    print("Charge hold direction state: " + chargeHoldDirectionState)
-    print("Charge hold direction state abbreviation: " + chargeHoldDirectionStateAbbreviation)
-    print(" ")
-
-    chargeReleaseDirection = move[rbi+1:rbi+2]
-    chargeReleaseDirectionWord = directionWords[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionState = directionStates[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeReleaseDirection)]
-
-    print("Charge release direction number: " + chargeReleaseDirection)
-    print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
-    print("Charge release direction word: " + chargeReleaseDirectionWord)
-    print("Charge release direction state: " + chargeReleaseDirectionState)
-    print("Charge release direction state abbreviation: " + chargeReleaseDirectionStateAbbreviation)
-    print(" ")
-
-    chargeAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(move[4].lower())]
-    chargeAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(move[5].lower())]
-    chargeAttackMoveWord = chargeAttackStrengthWord + " " + chargeAttackTypeWord
-    chargeAttackMoveAbbreviation = move[4] + move[5]
-
-    print("Charge attack strength abbreviation: " + chargeAttackStrengthWord[0])
-    print("Charge attack strength word: " + chargeAttackStrengthWord)
-    print("Charge attack type abbreviation: " + chargeAttackTypeWord[0])
-    print("Charge attack type word: " + chargeAttackTypeWord)
-    print("Charge attack move abbreviation: " + chargeAttackMoveAbbreviation)
-    print("Charge attack move word: " + chargeAttackMoveWord)
-    print("Charge attack move shortform: " + attackShortforms[chargeAttackMoveAbbreviation])
-    print("----")
-    print(" ")
-
-def motionParsing(move):
-    try:
-        if (len(move) != 3 and int(move[0:2]) > 9):
-            for element in attackStrengthAbbreviations:
-                if (move.partition(element.upper())[2] != ""):
-                    motionInputNumber = move.partition(element.upper())[0]            # (236)LK,
-                    motionInputAttackStrengthAbbreviation = move.partition(element.upper())[1]    # 236(L)K,
-                    motionInputAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(motionInputAttackStrengthAbbreviation.lower())]
-                    motionInputAttackTypeAbbreviation = (move.partition(element.upper())[2])[0]       # 236L(K),
-                    motionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(motionInputAttackTypeAbbreviation.lower())]
-                    attackMoveAbbreviation = motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation
-
-                    motionInputAbbreviation = motionAbbreviations[(motionNumbers.index(motionInputNumber))]
-                    motionInputWord = motionWords[(motionNumbers.index(motionInputNumber))]
-
-                    print("Motion input in number notation: " + motionInputNumber)
-                    print("Motion input in abbreviated notation: " + motionInputAbbreviation)
-                    print("Motion input in word notation: " + motionInputWord)
-                    print("")
-
-                    print("Attack strength abbreviation: " + motionInputAttackStrengthAbbreviation)
-                    print("Attack strength word: " + motionInputAttackStrengthWord)
-                    print("Attack type abbreviation: " + motionInputAttackTypeAbbreviation)
-                    print("Attack type word: " + motionInputAttackTypeWord)
-                    print("Attack move abbreviation: " + motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation)
-                    print("Attack move word: " + motionInputAttackStrengthWord + " " + motionInputAttackTypeWord)
-                    print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
-
-    except Exception:
-        pass
-    # .. not a motion
-
 def buttonParsing(move):
     attackDirection = move[0]    #(5)HP
     attackStrength = move[1]     #5(H)P
@@ -194,6 +117,82 @@ def buttonParsing(move):
         print("Number of hits: " + numOfHits)
     print("----")
     print(" ")
+
+def chargeParsing(move):
+    lbi = move.index("[")+1
+    rbi = move.index("]")
+
+    chargeHoldDirection = move[lbi:rbi]
+    chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
+    chargeHoldDirectionWord = directionWords[directionNumbers.index(chargeHoldDirection)]
+    chargeHoldDirectionState = directionStates[directionNumbers.index(chargeHoldDirection)]
+    chargeHoldDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeHoldDirection)]
+
+    print("Charge hold direction number: " + chargeHoldDirection)
+    print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
+    print("Charge hold direction word: " + chargeHoldDirectionWord)
+    print("Charge hold direction state: " + chargeHoldDirectionState)
+    print("Charge hold direction state abbreviation: " + chargeHoldDirectionStateAbbreviation)
+    print(" ")
+
+    chargeReleaseDirection = move[rbi+1:rbi+2]
+    chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
+    chargeReleaseDirectionWord = directionWords[directionNumbers.index(chargeReleaseDirection)]
+    chargeReleaseDirectionState = directionStates[directionNumbers.index(chargeReleaseDirection)]
+    chargeReleaseDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeReleaseDirection)]
+
+    print("Charge release direction number: " + chargeReleaseDirection)
+    print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
+    print("Charge release direction word: " + chargeReleaseDirectionWord)
+    print("Charge release direction state: " + chargeReleaseDirectionState)
+    print("Charge release direction state abbreviation: " + chargeReleaseDirectionStateAbbreviation)
+    print(" ")
+
+    attackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(move[4].lower())]
+    attackTypeWord = attackTypeWords[attackTypeAbbreviations.index(move[5].lower())]
+    attackMoveWord = attackStrengthWord + " " + attackTypeWord
+    attackMoveAbbreviation = move[4] + move[5]
+
+    print("Attack strength abbreviation: " + attackStrengthWord[0])
+    print("Attack strength word: " + attackStrengthWord)
+    print("Attack type abbreviation: " + attackTypeWord[0])
+    print("Attack type word: " + attackTypeWord)
+    print("Attack move abbreviation: " + attackMoveAbbreviation)
+    print("Attack move word: " + attackMoveWord)
+    print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
+    print(" ")
+
+def motionParsing(move):
+    try:
+        if (len(move) != 3 and int(move[0:2]) > 9):
+            for element in attackStrengthAbbreviations:
+                if (move.partition(element.upper())[2] != ""):
+                    motionInputNumber = move.partition(element.upper())[0]            # (236)LK,
+                    motionInputAttackStrengthAbbreviation = move.partition(element.upper())[1]    # 236(L)K,
+                    motionInputAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(motionInputAttackStrengthAbbreviation.lower())]
+                    motionInputAttackTypeAbbreviation = (move.partition(element.upper())[2])[0]       # 236L(K),
+                    motionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(motionInputAttackTypeAbbreviation.lower())]
+                    attackMoveAbbreviation = motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation
+
+                    motionInputAbbreviation = motionAbbreviations[(motionNumbers.index(motionInputNumber))]
+                    motionInputWord = motionWords[(motionNumbers.index(motionInputNumber))]
+
+                    print("Motion input in number notation: " + motionInputNumber)
+                    print("Motion input in abbreviated notation: " + motionInputAbbreviation)
+                    print("Motion input in word notation: " + motionInputWord)
+                    print("")
+
+                    print("Attack strength abbreviation: " + motionInputAttackStrengthAbbreviation)
+                    print("Attack strength word: " + motionInputAttackStrengthWord)
+                    print("Attack type abbreviation: " + motionInputAttackTypeAbbreviation)
+                    print("Attack type word: " + motionInputAttackTypeWord)
+                    print("Attack move abbreviation: " + motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation)
+                    print("Attack move word: " + motionInputAttackStrengthWord + " " + motionInputAttackTypeWord)
+                    print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
+
+    except Exception:
+        pass
+    # .. not a motion
 
 # will be defined by user; example values
 customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
