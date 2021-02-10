@@ -221,7 +221,6 @@ def moveTranslation(toTranslate):
             print("Evaluating \"" + move + "\"... (button)\n")
             buttonParsing(move)
 
-toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
-
 # customTranslationParsing()
+toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
 moveTranslation(toTranslate)
