@@ -24,7 +24,16 @@ motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle For
 moveArr = []
 inputContentsArr = []
 
+
 def imageCreation(input):
+    def getNextMove():
+        try:
+            # print("    Current move: " + moveArr[moveArrCurrentIndex])
+            # print("    Next move: " + moveArr[moveArrCurrentIndex+1])
+            return(moveArr[moveArrCurrentIndex+1])
+        except:
+            return(None)
+
     inputContentsArrPush(input.replace(",", " ,"))
     inputContentsArrCurrentIndex = 0
     moveArrCurrentIndex = 0
@@ -40,32 +49,59 @@ def imageCreation(input):
     nextWidth = nextHeight = 0
 
     def incWidth(stateFrom, stateTo, dirOrMotionNum):
+        addend = 0
 
         if (stateFrom == "direction" and stateTo == "plus"):
             if (dirOrMotionNum == "1" or dirOrMotionNum == "2" or dirOrMotionNum == "4" or dirOrMotionNum == "5" or dirOrMotionNum == "7" or dirOrMotionNum == "8"):
-                return(36)
+                addend = 36
             elif (dirOrMotionNum == "3" or dirOrMotionNum == "9"):
-                return(37)
+                addend = 37
             elif (dirOrMotionNum == "6"):
-                return(41)
+                addend = 41
+
+            # print("before \"direction\" -> \"plus\": " + str(nextWidth))
+            # print("after \"direction\" -> \"plus\": " + str(nextWidth+addend))
+            # print("")
         elif (stateFrom == "motion" and stateTo == "plus"):
             if (dirOrMotionNum == "236"):
-                return(41)
+                addend = 41
             else:
-                return(36)
+                addend = 36
+
+            # print("before \"motion\" -> \"plus\": " + str(nextWidth))
+            # print("after \"motion\" -> \"plus\": " + str(nextWidth+addend))
+            # print("")
         elif (stateFrom == "plus" and stateTo == "button"):
-            return(18)
+            addend = 18
+
+            # print("before \"plus\" -> \"button\": " + str(nextWidth))
+            # print("after \"plus\" -> \"button\": " + str(nextWidth+addend))
+            # print("")
         elif (stateFrom == "button" and stateTo == ">"):
-            return(32)
+            addend = 32
+
+            # print("before \"button\" -> \">\": " + str(nextWidth))
+            # print("after \"button\" -> \">\": " + str(nextWidth+addend))
+            # print("")
         elif (stateFrom == ">" and stateTo == "button"):
-            return(12)
+            addend = 12
+
+            # print("before \">\" -> \"button\": " + str(nextWidth))
+            # print("after \">\" -> \"button\": " + str(nextWidth+addend))
+            # print("")
         elif (stateFrom == ">" and stateTo == "motion"):
             if (dirOrMotionNum == "236"):
-                return(41)
+                addend = 12
+            elif (dirOrMotionNum == "214"):
+                addend = 17
             else:
-                return(12)
+                addend = 120
 
-        return(0)
+            # print("before \">\" -> \"motion\": " + str(nextWidth))
+            # print("after \">\" -> \"motion\": " + str(nextWidth+addend))
+            # print("")
+
+        return(addend)
 
     def drawPlus(w,h):
         draw.text((w,h), "+", font=ImageFont.truetype("FreeSans.ttf", 24), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
@@ -78,10 +114,13 @@ def imageCreation(input):
 
     # automated image assembly using other functions for info
     for move in input.split(" "):
-        print("\"" + move + "\"")
-        print("return data: " + str(moveTranslation(move)))
-        print("move is: " + str(parseMoveType(move)))
-        print(" ")
+        # print("\"" + move + "\"")
+        # print("return data: " + str(moveTranslation(move)))
+        # print("move is: " + str(parseMoveType(move)))
+        # print(" ")
+
+        nextMove = getNextMove()
+        nextMoveType = parseMoveType(nextMove)
 
         if (parseMoveType(move) == None):
             pass
@@ -97,26 +136,13 @@ def imageCreation(input):
             btnImg = Image.open(f"./images/buttons/{btn}.png")
 
             canvas.paste(dirImg, (nextWidth, nextHeight))
-            print("before \"direction\" -> \"plus\": " + str(nextWidth))
             nextWidth += incWidth("direction", "plus", dirNum)
-            print("after \"direction\" -> \"plus\": " + str(nextWidth))
-            print("")
             drawPlus(nextWidth, 5)
-            print("before \"plus\" -> \"button\": " + str(nextWidth))
             nextWidth += incWidth("plus", "button", 0)
-            print("after \"plus\" -> \"button\": " + str(nextWidth))
-            print("")
             canvas.paste(btnImg, (nextWidth, 7))
 
-            try:
-                nextMoveType = str(inputContentsArr[inputContentsArrCurrentIndex+1])
-                print(f"before \"button\" -> \"{nextMoveType}\": " + str(nextWidth))
-                nextWidth += incWidth("button", nextMoveType, 0)
-                print(f"after \"button\" -> \"{nextMoveType}\": " + str(nextWidth))
-                print("")
-                inputContentsArrCurrentIndex += 1
-            except:
-                pass
+            nextWidth += incWidth("button", nextMoveType, 0)
+            inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
         elif (parseMoveType(move) == "motion"):
             motionNum = moveTranslation(move)[0].lower()
@@ -127,63 +153,32 @@ def imageCreation(input):
             btnImg = Image.open(f"./images/buttons/{btn}.png")
 
             canvas.paste(motionImg, (nextWidth, nextHeight))
-            print("before \"motion\" -> \"plus\": " + str(nextWidth))
             nextWidth += incWidth("motion", "plus", motionNum)
-            print("after \"motion\" -> \"plus\": " + str(nextWidth))
-            print("")
             drawPlus(nextWidth, 5)
-            print("before \"plus\" -> \"button\": " + str(nextWidth))
             nextWidth += incWidth("plus", "button", 0)
-            print("after \"plus\" -> \"button\": " + str(nextWidth))
-            print("")
             canvas.paste(btnImg, (nextWidth, 7))
 
-            try:
-                nextMoveType = str(inputContentsArr[inputContentsArrCurrentIndex+1])
-                print(f"before \"button\" -> \"{nextMoveType}\": " + str(nextWidth))
-                nextWidth += incWidth("button", nextMoveType, 0)
-                print(f"after \"button\" -> \"{nextMoveType}\": " + str(nextWidth))
-                print("")
-                inputContentsArrCurrentIndex += 1
-            except:
-                pass
+            nextWidth += incWidth("button", nextMoveType, 0)
+            inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
         elif (parseMoveType(move) == "charge"):
             pass
-        elif (parseMoveType(move) == "xx"):
-            drawxx(nextWidth,5)
-            try:
-                nextMoveType = str(inputContentsArr[inputContentsArrCurrentIndex+1])
-                print(f"before \"xx\" -> \"{nextMoveType}\": " + str(nextWidth))
-                nextWidth += incWidth("xx", nextMoveType, 0)
-                print(f"after \"xx\" -> \"{nextMoveType}\": " + str(nextWidth))
-                print("")
-                inputContentsArrCurrentIndex += 1
-            except:
-                pass
-            moveArrCurrentIndex += 1
         elif (parseMoveType(move) == ">"):
             drawArrow(nextWidth,7)
-            try:
-                nextMoveType = str(inputContentsArr[inputContentsArrCurrentIndex+1])
-                print(f"before \">\" -> \"{nextMoveType}\": " + str(nextWidth))
+            # print(f"before \">\" -> \"{nextMoveType}\": " + str(nextWidth))
 
-                if (nextMoveType == "motion"):
-                    nextMove = str(moveArr[moveArrCurrentIndex+1])
-                    print(nextMove)
-                    dirOrMotionNumber == 69
-                else:
-                    dirOrMotionNumber == 0
-
-                nextWidth += incWidth(">", nextMoveType, dirOrMotionNumber)
-                print(f"after \">\" -> \"{nextMoveType}\": " + str(nextWidth))
-                print("")
-                inputContentsArrCurrentIndex += 1
-            except:
+            if (nextMoveType == "motion"):
+                motionNum = moveTranslation(nextMove)[0].lower()
+                nextWidth += incWidth(">", nextMoveType, str(motionNum))
                 pass
+            else:
+                nextWidth += incWidth(">", nextMoveType, 0)
+                pass
+
+            # print(f"after \">\" -> \"{nextMoveType}\": " + str(nextWidth))
+            # print("")
+            inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
-        else:
-            pass
 
         canvas.save("./move.png", "PNG")
 
@@ -204,6 +199,8 @@ def syntaxChecking(string):
             sys.exit(1)
 
 def parseMoveType(move):
+    if (move == None):
+        return
     syntaxChecking(move)
     if (move == ">"):
         return(">")
@@ -444,12 +441,12 @@ def inputContentsArrPush(input):
         inputContentsArr.append(parseMoveType(move))
     # print("----\n")
 
-    print(moveArr)
-    print(inputContentsArr)
-    print("----\n")
+    # print(moveArr)
+    # print(inputContentsArr)
+    # print("----\n")
 
 # customTranslationParsing()
 # toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
 # imageCreation(toTranslate)
-# imageCreation("2MK > 236HP > 214MK")
-imageCreation("2MK > 214HP")
+imageCreation("2MK > 236HP > 214MK")
+# imageCreation("2MK > 214HP")
