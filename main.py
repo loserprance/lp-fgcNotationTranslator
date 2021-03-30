@@ -1,25 +1,151 @@
 # packages/dependancies
 from PIL import Image, ImageFont, ImageDraw
-import sys
+import sys, json
 
-# fighting game terminologies...maybe make a dict later?
-attackStrengthAbbreviations = ("l", "m", "h", "ex")
-attackStrengthWords = ("Light", "Medium", "Heavy", "EX.")
-
-attackTypeAbbreviations = ("p", "k")
-attackTypeWords = ("Punch", "Kick")
-
-attackShortforms = {"LP":"Jab", "MP":"Short", "HP":"Fierce", "LK":"Short", "MK":"Forward", "HK":"Roundhouse"}
-
-directionNumbers = ("1", "2", "3", "4", "5", "6", "7", "8", "9")
-directionAbbreviations = ("d/b", "d", "d/f", "b", "n", "f", "u/b", "u", "u/f")
-directionWords = ("down-back", "down", "down-forward", "back", "neutral", "forward", "up-back", "up", "up-forward")
-directionStates = ("Crouching", "Crouching", "Crouching", "Back", "Standing", "Towards", "Jumping", "Neutral Jumping", "Jumping")
-directionStatesAbbreviations = ("cr.", "cr.", "cr.", "b.", "s.", "f.", "j.", "nj.", "j.")
-
-motionNumbers = ("236", "214", "41236", "63214", "623", "421", "6321478", "2369", "412", "632")
-motionAbbreviations = ("qcf", "qcb", "hcf", "hcb", "dp", "rdp", "360", "tk", "bdbd", "fdfd")
-motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle Forward", "Half-Circle Back", "Dragon Punch", "Reverse Dragon Punch", "360", "Tiger Knee", "Back, Down-Back, Down", "Forward, Down-Forward, Down")
+# different "languages" of fg notation exist...capcom (jab,short,fierce), numpad, snk?
+# numpad notation is used as a base for directions and motions
+notation = {
+    "directions": {
+        "1" : {
+            "full" : "down-back",
+            "abbreviation": "d/b",
+            "state": "crouching",
+            "stateAbv": "cr.",
+        },
+        "2" : {
+            "full" : "down",
+            "abbreviation": "d",
+            "state": "crouching",
+            "stateAbv": "cr.",
+        },
+        "3" : {
+            "full" : "down-forward",
+            "abbreviation": "d/f",
+            "state": "crouching",
+            "stateAbv": "cr.",
+        },
+        "4" : {
+            "full" : "back",
+            "abbreviation": "b",
+            "state": "back",
+            "stateAbv": "b.",
+        },
+        "5" : {
+            "full" : "neutral",
+            "abbreviation": "n",
+            "state": "standing",
+            "stateAbv": "s.",
+        },
+        "6" : {
+            "full" : "forward",
+            "abbreviation": "f",
+            "state": "towards",
+            "stateAbv": "f.",
+        },
+        "7" : {
+            "full" : "up-back",
+            "abbreviation": "u/b",
+            "state": "jumping",
+            "stateAbv": "j.",
+        },
+        "8" : {
+            "full" : "up",
+            "abbreviation": "u",
+            "state": "neutral jumping",
+            "stateAbv": "nj.",
+        },
+        "9" : {
+            "full" : "up-forward",
+            "abbreviation": "u/f",
+            "state": "jumping",
+            "stateAbv": "j.",
+        }
+    },
+    "motions": {
+        "236": {
+            "abbreviation": "qcf",
+            "full" : "Quarter-Circle Forward"
+        },
+        "214": {
+            "abbreviation": "qcb",
+            "full" : "Quarter-Circle Back"
+        },
+        "41236": {
+            "abbreviation": "hcf",
+            "full" : "Half-Circle Forward"
+        },
+        "63214": {
+            "abbreviation": "hcb",
+            "full" : "Half-Circle Back"
+        },
+        "623": {
+            "abbreviation": "dp",
+            "full" : "Dragon Punch"
+        },
+        "421": {
+            "abbreviation": "rdp",
+            "full" : "Reverse Dragon Punch"
+        },
+        "6321478": {
+            "abbreviation": "360",
+            "full" : "360"
+        },
+        "2369": {
+            "abbreviation": "tk",
+            "full" : "Tiger Knee"
+        },
+        "412": {
+            "abbreviation": "bdbd",
+            "full" : "Back, Down-Back, Down"
+        },
+        "632": {
+            "abbreviation": "fdfd",
+            "full" : "Forward, Down-Forward, Down"
+        }
+    },
+    "buttons": {
+        "sf": {
+            "LP": {
+                "boomer": "Jab",
+                "strength" : "Light",
+                "attack" : "Punch"
+            },
+            "MP": {
+                "boomer": "Strong",
+                "strength" : "Medium",
+                "attack" : "Punch"
+            },
+            "HP": {
+                "boomer": "Fierce",
+                "strength" : "Heavy",
+                "attack" : "Punch"
+            },
+            "LK": {
+                "boomer": "Short",
+                "strength" : "Light",
+                "attack" : "Kick"
+            },
+            "MK": {
+                "boomer": "Forward",
+                "strength" : "Medium",
+                "attack" : "Kick"
+            },
+            "HK": {
+                "boomer": "Roundhouse",
+                "strength" : "Heavy",
+                "attack" : "Kick"
+            },
+            "PP": {
+                "strength" : "EX",
+                "attack" : "Punch"
+            },
+            "KK": {
+                "strength" : "EX",
+                "attack" : "Kick"
+            }
+        }
+    }
+}
 
 moveArr = []
 inputContentsArr = []
@@ -42,23 +168,21 @@ def wikiMarkdownCreation(input):
     result = ""
 
     for move in input.split(" "):
-        print("move: " + move)
         nextMove = getNextMove()
         nextMoveType = parseMoveType(nextMove)
 
         if (parseMoveType(move) == None):
             pass
         elif (parseMoveType(move) == "button"):
-            # if neutral...no direction?
-            dir = moveTranslation(move)[0]
-            btn = moveTranslation(move)[1].lower()
-            numOfHits = moveTranslation(move)[2]
+            direction = moveTranslation(move)["direction"]
+            btn = moveTranslation(move)["btn"].lower()
+            numOfHits = moveTranslation(move)["numOfHits"]
 
-            dirAbv = directionAbbreviations[directionNumbers.index(dir)].replace("/", "")
+            dirAbv = notation["directions"][direction]["abbreviation"]
             if (dirAbv.lower() != "n"):
                 result += f"[[File:{dirAbv}.png]] + "
 
-            if (numOfHits == "0"):
+            if (str(numOfHits) == "0"):
                 result += f"[[File:{btn}.png]] "
             else:
                 result += f"[[File:{btn}.png]] ({numOfHits}) "
@@ -66,21 +190,21 @@ def wikiMarkdownCreation(input):
             inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
         elif (parseMoveType(move) == "motion"):
-            motionNum = moveTranslation(move)[0].lower()
-            btn = moveTranslation(move)[1].lower()
+            motionNum = moveTranslation(move)["motionNum"]
+            btn = moveTranslation(move)["btn"].lower()
 
-            motionAbv = motionAbbreviations[motionNumbers.index(motionNum)]
-            print("motionAbv: " + motionAbv)
+            motionAbv = notation["motions"][motionNum]["abbreviation"]
             result += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
 
             inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
         elif (parseMoveType(move) == "charge"):
-            hold = moveTranslation(move)[0]
-            release = moveTranslation(move)[1]
-            holdAbv = directionAbbreviations[directionNumbers.index(hold)].replace("/", "")
-            releaseAbv = directionAbbreviations[directionNumbers.index(release)].replace("/", "")
-            btn = moveTranslation(move)[2]
+            hold = moveTranslation(move)["hold"]
+            release = moveTranslation(move)["release"]
+            btn = moveTranslation(move)["btn"].lower()
+
+            holdAbv = notation["directions"][hold]["abbreviation"]
+            releaseAbv = notation["directions"][release]["abbreviation"]
 
             result += f"[[File:{holdAbv}.png]][[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
 
@@ -198,7 +322,7 @@ def imageCreation(input):
             btn = moveTranslation(move)[1].lower()
             numOfHits = moveTranslation(move)[2]
 
-            dirAbv = directionAbbreviations[directionNumbers.index(dirNum)].replace("/", "")
+            dirAbv = notation["directions"][dir]["abbreviation"]
             dirImg = Image.open(f"./images/directions/{dirAbv}.png")
             btnImg = Image.open(f"./images/buttons/{btn}.png")
 
@@ -215,7 +339,7 @@ def imageCreation(input):
             motionNum = moveTranslation(move)[0].lower()
             btn = moveTranslation(move)[1].lower()
 
-            motionAbv = motionAbbreviations[motionNumbers.index(motionNum)]
+            motionAbv = notation["motions"][motionNum]["abbreviation"]
             motionImg = Image.open(f"./images/motions/{motionAbv}.png")
             btnImg = Image.open(f"./images/buttons/{btn}.png")
 
@@ -299,138 +423,6 @@ def parseMoveType(move):
         else:
             return("button")
 
-def parseDirection(dirNum):
-
-    dirAbbreviation = directionAbbreviations[directionNumbers.index(dirNum)]
-    dirWord = directionWords[directionNumbers.index(dirNum)]
-    dirState = directionStates[directionNumbers.index(dirNum)]
-    dirStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(dirNum)]
-
-    # print("Direction number: " + dirNum)
-    # print("Direction abbreviation: " + dirAbbreviation)
-    # print("Direction word: " + dirWord)
-    # print("Direction state: " + dirState)
-    # print("Direction state abbreviation: " + dirStateAbbreviation)
-    # print(" ")
-
-    return(dirNum)
-
-def parseAttack(move):
-    attStrAbv = move[1]
-    attTypeAbv = move[2]
-
-    # if string contains an attack that requires a specific amount of hits (use of parentheses () )
-    if (("(" in move or ")" in move)):
-        numOfHits = move[4]
-    else:
-        numOfHits = 0
-
-    attStrWord = attackStrengthWords[attackStrengthAbbreviations.index(attStrAbv.lower())]
-    attTypeWord = attackTypeWords[attackTypeAbbreviations.index(attTypeAbv.lower())]
-
-    attMoveWord = attStrWord + " " + attTypeWord
-    attMoveAbv = attStrWord[0] + attTypeWord[0]
-
-    # print("Attack strength abbreviation: " + attStrWord[0])
-    # print("Attack strength word: " + attStrWord)
-    # print("Attack type abbreviation: " + attTypeWord[0])
-    # print("Attack type word: " + attTypeWord)
-    # print("Attack move abbreviation: " + attMoveAbv)
-    # print("Attack move word: " + attMoveWord)
-    # print("Attack move shortform: " + attackShortforms[attMoveAbv])
-
-    # if (("(" in move or ")" in move)):
-        # print("Number of hits: " + numOfHits)
-
-    return(attMoveAbv, str(numOfHits))
-
-def buttonParsing(move):
-    # parseDirection(move[0])
-    # parseAttack(move)
-
-    return(str(parseDirection(move[0])), str(parseAttack(move)[0]), str(parseAttack(move)[1]),)
-
-def chargeParsing(move):
-    lbi = move.index("[")+1
-    rbi = move.index("]")
-
-    chargeHoldDirection = move[lbi:rbi]
-    chargeHoldDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionWord = directionWords[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionState = directionStates[directionNumbers.index(chargeHoldDirection)]
-    chargeHoldDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeHoldDirection)]
-
-    # print("Charge hold direction number: " + chargeHoldDirection)
-    # print("Charge hold direction abbreviation: " + chargeHoldDirectionAbbreviation)
-    # print("Charge hold direction word: " + chargeHoldDirectionWord)
-    # print("Charge hold direction state: " + chargeHoldDirectionState)
-    # print("Charge hold direction state abbreviation: " + chargeHoldDirectionStateAbbreviation)
-    # print(" ")
-
-    chargeReleaseDirection = move[rbi+1:rbi+2]
-    chargeReleaseDirectionAbbreviation = directionAbbreviations[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionWord = directionWords[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionState = directionStates[directionNumbers.index(chargeReleaseDirection)]
-    chargeReleaseDirectionStateAbbreviation = directionStatesAbbreviations[directionNumbers.index(chargeReleaseDirection)]
-
-    # print("Charge release direction number: " + chargeReleaseDirection)
-    # print("Charge release direction abbreviation: " + chargeReleaseDirectionAbbreviation)
-    # print("Charge release direction word: " + chargeReleaseDirectionWord)
-    # print("Charge release direction state: " + chargeReleaseDirectionState)
-    # print("Charge release direction state abbreviation: " + chargeReleaseDirectionStateAbbreviation)
-    # print(" ")
-
-    attackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(move[4].lower())]
-    attackTypeWord = attackTypeWords[attackTypeAbbreviations.index(move[5].lower())]
-    attackMoveWord = attackStrengthWord + " " + attackTypeWord
-    attackMoveAbbreviation = move[4] + move[5]
-
-    # print("Attack strength abbreviation: " + attackStrengthWord[0])
-    # print("Attack strength word: " + attackStrengthWord)
-    # print("Attack type abbreviation: " + attackTypeWord[0])
-    # print("Attack type word: " + attackTypeWord)
-    # print("Attack move abbreviation: " + attackMoveAbbreviation)
-    # print("Attack move word: " + attackMoveWord)
-    # print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
-    # print(" ")
-
-    return(chargeHoldDirection, chargeReleaseDirection, attackMoveAbbreviation.lower())
-
-def motionParsing(move):
-    try:
-        if (len(move) != 3 and int(move[0:2]) > 9):
-            for element in attackStrengthAbbreviations:
-                if (move.partition(element.upper())[2] != ""):
-                    motionInputNumber = move.partition(element.upper())[0]            # (236)LK,
-                    motionInputAttackStrengthAbbreviation = move.partition(element.upper())[1]    # 236(L)K,
-                    motionInputAttackStrengthWord = attackStrengthWords[attackStrengthAbbreviations.index(motionInputAttackStrengthAbbreviation.lower())]
-                    motionInputAttackTypeAbbreviation = (move.partition(element.upper())[2])[0]       # 236L(K),
-                    motionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(motionInputAttackTypeAbbreviation.lower())]
-                    attackMoveAbbreviation = motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation
-
-                    motionInputAbbreviation = motionAbbreviations[(motionNumbers.index(motionInputNumber))]
-                    motionInputWord = motionWords[(motionNumbers.index(motionInputNumber))]
-
-                    # print("Motion input in number notation: " + motionInputNumber)
-                    # print("Motion input in abbreviated notation: " + motionInputAbbreviation)
-                    # print("Motion input in word notation: " + motionInputWord)
-                    # print("")
-
-                    # print("Attack strength abbreviation: " + motionInputAttackStrengthAbbreviation)
-                    # print("Attack strength word: " + motionInputAttackStrengthWord)
-                    # print("Attack type abbreviation: " + motionInputAttackTypeAbbreviation)
-                    # print("Attack type word: " + motionInputAttackTypeWord)
-                    # print("Attack move abbreviation: " + motionInputAttackStrengthAbbreviation + motionInputAttackTypeAbbreviation)
-                    # print("Attack move word: " + motionInputAttackStrengthWord + " " + motionInputAttackTypeWord)
-                    # print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
-
-                    return(motionInputNumber, attackMoveAbbreviation)
-
-    except Exception:
-        pass
-    # .. not a motion
-
-# will be defined by user; example values
 customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
 
 def customTranslationParsing():
@@ -441,73 +433,46 @@ def customTranslationParsing():
         kp = input.partition("*")
         print("input.partition(\"*\"): " + str(kp) + "\n")
 
-        # if the partition successfully split the string...
-        if (kp[2] != ""):
-            # charge move handling
-            if ("[" in kp[0] or "]" in kp[0]):
-                lbi = input.index("[")
-                rbi = input.index("]")
-                chargeHoldDirections = (input[lbi+1:rbi]).split("/")
-                chargeReleaseDirections = (input[rbi+1:].partition("*")[0]).split("/")
-
-                chargeAttackStrength = (input[rbi+1:].partition("*")[1])
-                if (chargeAttackStrength == "*"):
-                    chargeAttackStrength = "Any"
-                chargeAttackType = (input[rbi+1:].partition("*")[2])
-
-                # print("Valid charge hold directions: ")
-                # for validChargeHoldDirection in chargeHoldDirections:
-                    # print(validChargeHoldDirection)
-
-                # print("Valid charge release directions:")
-                # for validChargeReleaseDirection in chargeReleaseDirections:
-                    # print(validChargeReleaseDirection)
-
-                # print("Charge attack strength: " + chargeAttackStrength)
-                # print("Charge attack type: " + chargeAttackType)
-
-            # motion input move handling
-            elif (kp[0] in motionNumbers):
-                customMotionInputNumber = kp[0]
-                customMotionInputAttackStrength = kp[1]
-                customMotionInputAttackTypeAbbreviation = (kp[2])[0]
-                customMotionInputAttackTypeWord = attackTypeWords[attackTypeAbbreviations.index(customMotionInputAttackTypeAbbreviation.lower())]
-
-                # print("Custom motion input number: " + customMotionInputNumber)
-                # if ("*" in kp[1]):
-                    # print("Custom motion input attack strength: " + "Any")
-                # else:
-                    # print("Custom motion input attack strength: " + customMotionInputAttackStrength)
-                # print("Custom motion input attack type abbreviation: " + customMotionInputAttackTypeAbbreviation)
-                # print("Custom motion input attack type word: " + customMotionInputAttackTypeWord)
-                # print("\n----")
-            # elif ("(" in toTranslate or ")" in toTranslate):
-
 
 def moveTranslation(move):
     # print(f"(moveTranslation) Checking syntax of move '{move}'")
     syntaxChecking(move)
-    # print(move)
 
     if (parseMoveType(move) == None):
         pass
     elif (parseMoveType(move) == "charge"):
-        # print("syntax: hold, release, button")
-        return(chargeParsing(move))
+        lbi = move.index("[")+1
+        rbi = move.index("]")
+
+        hold = move[lbi:rbi]
+        release = move[rbi+1:rbi+2]
+        btn = move[4] + move[5]
+
+        return({"hold": hold, "release": release, "btn": btn})
     elif (parseMoveType(move) == "motion"):
-        # print("syntax: motion, button")
-        return(motionParsing(move))
+        if (len(move) != 3 and int(move[0:2]) > 9):
+            attackStrengths = ["L", "M", "H"]
+            for element in attackStrengths:
+                if (move.partition(element)[2] != ""):
+                    motionNum = move.partition(element.upper())[0]
+                    btn =  move.partition(element.upper())[1] + move.partition(element.upper())[2]
+
+                    return({"motionNum": motionNum, "btn": btn})
     elif (parseMoveType(move) == "button"):
-        # print("syntax: direction, button, numofhits")
-        return(buttonParsing(move))
+        direction = move[0]
+        btn = move[1]+move[2]
+        if (("(" in move or ")" in move)):
+            numOfHits = move[4]
+        else:
+            numOfHits = 0
+
+        return({"direction": direction, "btn": btn, "numOfHits": numOfHits})
     elif (parseMoveType(move) == "xx"):
         return("xx")
     elif (parseMoveType(move) == ">"):
         return(">")
     elif (parseMoveType(move) == ","):
         return(",")
-    else:
-        pass
 
 def inputContentsArrPush(input):
     print("Input: " + str(input))
@@ -529,7 +494,7 @@ def inputContentsArrPush(input):
     # print("----\n")
 
 # customTranslationParsing()
-# imageCreation(toTranslate)
-
 toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
+# imageCreation(toTranslate)
 wikiMarkdownCreation(toTranslate)
+# wikiMarkdownCreation("2LP > 5MP > 2MK > [2]8LK")
