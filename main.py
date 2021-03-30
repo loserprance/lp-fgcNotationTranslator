@@ -24,20 +24,79 @@ motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle For
 moveArr = []
 inputContentsArr = []
 
+def getNextMove():
+    try:
+        # print("    Current move: " + moveArr[moveArrCurrentIndex])
+        # print("    Next move: " + moveArr[moveArrCurrentIndex+1])
+        return(moveArr[moveArrCurrentIndex+1])
+    except:
+        return(None)
+
 def wikiMarkdownCreation(input):
-    # todo
-    print("wiki markdown creation function")
-    print(input)
+    input = input.replace(",", " ,")
+    # input contents array population
+    inputContentsArrPush(input)
+    inputContentsArrCurrentIndex = 0
+    moveArrCurrentIndex = 0
+
+    result = ""
+
+    for move in input.split(" "):
+        print("move: " + move)
+        nextMove = getNextMove()
+        nextMoveType = parseMoveType(nextMove)
+
+        if (parseMoveType(move) == None):
+            pass
+        elif (parseMoveType(move) == "button"):
+            # if neutral...no direction?
+            dir = moveTranslation(move)[0]
+            btn = moveTranslation(move)[1].lower()
+            numOfHits = moveTranslation(move)[2]
+
+            dirAbv = directionAbbreviations[directionNumbers.index(dir)].replace("/", "")
+            if (dirAbv.lower() != "n"):
+                result += f"[[File:{dirAbv}.png]] + "
+
+            if (numOfHits == "0"):
+                result += f"[[File:{btn}.png]] "
+            else:
+                result += f"[[File:{btn}.png]] ({numOfHits}) "
+
+            inputContentsArrCurrentIndex += 1
+            moveArrCurrentIndex += 1
+        elif (parseMoveType(move) == "motion"):
+            motionNum = moveTranslation(move)[0].lower()
+            btn = moveTranslation(move)[1].lower()
+
+            motionAbv = motionAbbreviations[motionNumbers.index(motionNum)]
+            print("motionAbv: " + motionAbv)
+            result += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
+
+            inputContentsArrCurrentIndex += 1
+            moveArrCurrentIndex += 1
+        elif (parseMoveType(move) == "charge"):
+            hold = moveTranslation(move)[0]
+            release = moveTranslation(move)[1]
+            holdAbv = directionAbbreviations[directionNumbers.index(hold)].replace("/", "")
+            releaseAbv = directionAbbreviations[directionNumbers.index(release)].replace("/", "")
+            btn = moveTranslation(move)[2]
+
+            result += f"[[File:{holdAbv}.png]][[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
+
+        elif (parseMoveType(move) == ","):
+            result = result[:len(result) -1] + f"{move} "
+            pass
+        else:
+            inputContentsArrCurrentIndex += 1
+            moveArrCurrentIndex += 1
+            result += f"{move} "
+
+    print("Result:\n" + result)
 
 def imageCreation(input):
-    def getNextMove():
-        try:
-            # print("    Current move: " + moveArr[moveArrCurrentIndex])
-            # print("    Next move: " + moveArr[moveArrCurrentIndex+1])
-            return(moveArr[moveArrCurrentIndex+1])
-        except:
-            return(None)
 
+    # input contents array population
     inputContentsArrPush(input.replace(",", " ,"))
     inputContentsArrCurrentIndex = 0
     moveArrCurrentIndex = 0
@@ -52,6 +111,7 @@ def imageCreation(input):
     # these values are adjusted to determine where to put the next image or text used in the completed image
     nextWidth = nextHeight = 0
 
+    # function for determining how many pixels away to place the next image element, depending on what the current and next ones are
     def incWidth(stateFrom, stateTo, dirOrMotionNum):
         addend = 0
 
@@ -121,10 +181,10 @@ def imageCreation(input):
 
     # automated image assembly using other functions for info
     for move in input.split(" "):
-        # print("\"" + move + "\"")
-        # print("return data: " + str(moveTranslation(move)))
-        # print("move is: " + str(parseMoveType(move)))
-        # print(" ")
+        print("\"" + move + "\"")
+        print("return data: " + str(moveTranslation(move)))
+        print("move is: " + str(parseMoveType(move)))
+        print(" ")
 
         nextMove = getNextMove()
         nextMoveType = parseMoveType(nextMove)
@@ -213,11 +273,14 @@ def syntaxChecking(string):
 def parseMoveType(move):
     if (move == None):
         return
+    # print(f"(parseMoveType) Checking syntax of move '{move}'")
     syntaxChecking(move)
     if (move == ">"):
         return(">")
     elif (move == "xx"):
         return("xx")
+    elif (move == ","):
+        return(",")
     # elif (move == ","):
         # return(",")
     # if the first character in this move is a bracket, this is a charge move
@@ -331,7 +394,7 @@ def chargeParsing(move):
     # print("Attack move shortform: " + attackShortforms[attackMoveAbbreviation])
     # print(" ")
 
-    return(chargeHoldDirection, chargeReleaseDirection, attackMoveAbbreviation)
+    return(chargeHoldDirection, chargeReleaseDirection, attackMoveAbbreviation.lower())
 
 def motionParsing(move):
     try:
@@ -422,6 +485,7 @@ def customTranslationParsing():
 
 
 def moveTranslation(move):
+    # print(f"(moveTranslation) Checking syntax of move '{move}'")
     syntaxChecking(move)
     # print(move)
 
@@ -446,20 +510,26 @@ def moveTranslation(move):
         pass
 
 def inputContentsArrPush(input):
+    print("Input: " + str(input))
     split = input.split(" ")
-    # print("String: " + str(input) + "\n----")
     for move in split:
-        # print(move)
         moveArr.append(move)
         inputContentsArr.append(parseMoveType(move))
-    # print("----\n")
+
+        # print("\"" + move + "\"")
+        # print("return data: " + str(moveTranslation(move)))
+        # print("move is: " + str(parseMoveType(move)))
+        # print(" ")
+
+    print("moveArr: " + str(moveArr))
+    print("inputContentsArr: " + str(inputContentsArr) + "\n----")
 
     # print(moveArr)
     # print(inputContentsArr)
     # print("----\n")
 
 # customTranslationParsing()
-# toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
 # imageCreation(toTranslate)
-# imageCreation("41236HP")
-wikiMarkdownCreation("41236HP")
+
+toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
+wikiMarkdownCreation(toTranslate)
