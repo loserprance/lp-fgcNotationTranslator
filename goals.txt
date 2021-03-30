@@ -1,0 +1,4 @@
+create a tool that turns fighting game notation of all languages (numpad notation, "capcom", etc.) into
+	images from icons with the use of PIL
+	markdown useful for srk wiki
+	useful for FAT in some way?

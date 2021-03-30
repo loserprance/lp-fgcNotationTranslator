@@ -24,6 +24,10 @@ motionWords = ("Quarter-Circle Forward", "Quarter-Circle Back", "Half-Circle For
 moveArr = []
 inputContentsArr = []
 
+def wikiMarkdownCreation(input):
+    # todo
+    print("wiki markdown creation function")
+    print(input)
 
 def imageCreation(input):
     def getNextMove():
@@ -106,6 +110,9 @@ def imageCreation(input):
     def drawPlus(w,h):
         draw.text((w,h), "+", font=ImageFont.truetype("FreeSans.ttf", 24), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
 
+    def drawComma(w,h):
+        draw.text((w,h), ",", font=ImageFont.truetype("FreeSans.ttf", 18), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
+
     def drawArrow(w,h):
         draw.text((w,h), ">", font=ImageFont.truetype("FreeSans.ttf", 18), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
 
@@ -180,6 +187,11 @@ def imageCreation(input):
             inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
 
+        elif (parseMoveType(move) == ","):
+            pass
+        elif (parseMoveType(move) == "xx"):
+            pass
+
         canvas.save("./move.png", "PNG")
 
 def syntaxChecking(string):
@@ -206,8 +218,8 @@ def parseMoveType(move):
         return(">")
     elif (move == "xx"):
         return("xx")
-    elif (move == ","):
-        return(",")
+    # elif (move == ","):
+        # return(",")
     # if the first character in this move is a bracket, this is a charge move
     if (("[" in move or "]" in move)):
         return("charge")
@@ -428,9 +440,10 @@ def moveTranslation(move):
         return("xx")
     elif (parseMoveType(move) == ">"):
         return(">")
+    elif (parseMoveType(move) == ","):
+        return(",")
     else:
         pass
-
 
 def inputContentsArrPush(input):
     split = input.split(" ")
@@ -448,5 +461,5 @@ def inputContentsArrPush(input):
 # customTranslationParsing()
 # toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
 # imageCreation(toTranslate)
-imageCreation("2MK > 236HP > 214MK")
-# imageCreation("2MK > 214HP")
+# imageCreation("41236HP")
+wikiMarkdownCreation("41236HP")
