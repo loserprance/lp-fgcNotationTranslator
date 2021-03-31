@@ -2,6 +2,11 @@
 from PIL import Image, ImageFont, ImageDraw
 import sys, json
 
+# NEXT STEPS:
+# translating notation other than numpad (cr.mk...)
+# custom translating ("shoryuken" -> "623P"...)
+# repair image function/incorporate into wiki function
+
 # different "languages" of fg notation exist...capcom (jab,short,fierce), numpad, snk?
 # numpad notation is used as a base for directions and motions
 notation = {
@@ -34,7 +39,7 @@ notation = {
             "full" : "neutral",
             "abbreviation": "n",
             "state": "standing",
-            "stateAbv": "s.",
+            "stateAbv": "st.",
         },
         "6" : {
             "full" : "forward",
@@ -147,8 +152,6 @@ notation = {
     }
 }
 
-moveArr = []
-inputContentsArr = []
 
 def getNextMove():
     try:
@@ -159,26 +162,53 @@ def getNextMove():
         return(None)
 
 def wikiMarkdownCreation(input):
-    input = input.replace(",", " ,")
-    # input contents array population
-    inputContentsArrPush(input)
-    inputContentsArrCurrentIndex = 0
+    moveArr = []
+    inputContentsArr = []
     moveArrCurrentIndex = 0
-
+    inputContentsArrCurrentIndex = 0
     result = ""
 
-    for move in input.split(" "):
+    print("Input: " + str(input))
+    syntaxChecking(input)
+
+    input = input.replace(",", " ,")
+    # input contents array population
+    split = input.split(" ")
+    for move in split:
+        moveArr.append(move)
+        inputContentsArr.append(parseMoveType(move))
+
+        # print("\"" + move + "\"")
+        # print("return data: " + str(moveTranslation(move)))
+        # print("move is: " + str(parseMoveType(move)))
+        # print(" ")
+
+    print("moveArr: " + str(moveArr))
+    print("inputContentsArr: " + str(inputContentsArr) + "\n----")
+
+    for move in split:
         nextMove = getNextMove()
+        currentMoveType = parseMoveType(move)
         nextMoveType = parseMoveType(nextMove)
 
-        if (parseMoveType(move) == None):
+        if (currentMoveType == None):
             pass
-        elif (parseMoveType(move) == "button"):
-            direction = moveTranslation(move)["direction"]
+        elif (currentMoveType == "button"):
+            validDirections = moveTranslation(move)["directions"]
+
+            if isinstance(validDirections, list):
+                if (validDirections == ["1", "2", "3"]):
+                    direction = "2"
+                elif (len(validDirections) == 1):
+                    direction = str(validDirections[0])
+            else:
+                direction = str(validDirections)
+
             btn = moveTranslation(move)["btn"].lower()
             numOfHits = moveTranslation(move)["numOfHits"]
 
             dirAbv = notation["directions"][direction]["abbreviation"]
+
             if (dirAbv.lower() != "n"):
                 result += f"[[File:{dirAbv}.png]] + "
 
@@ -189,26 +219,36 @@ def wikiMarkdownCreation(input):
 
             inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
-        elif (parseMoveType(move) == "motion"):
+        elif (currentMoveType == "motion"):
+            # print(moveTranslation(move))
             motionNum = moveTranslation(move)["motionNum"]
             btn = moveTranslation(move)["btn"].lower()
 
             motionAbv = notation["motions"][motionNum]["abbreviation"]
+
             result += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
 
             inputContentsArrCurrentIndex += 1
             moveArrCurrentIndex += 1
-        elif (parseMoveType(move) == "charge"):
+        elif (currentMoveType == "charge"):
+            # print(moveTranslation(move))
             hold = moveTranslation(move)["hold"]
             release = moveTranslation(move)["release"]
             btn = moveTranslation(move)["btn"].lower()
 
-            holdAbv = notation["directions"][hold]["abbreviation"]
-            releaseAbv = notation["directions"][release]["abbreviation"]
+            if (hold.isdigit()):
+                holdAbv = notation["directions"][hold]["abbreviation"]
+            else:
+                holdAbv = hold
+
+            if (release.isdigit()):
+                releaseAbv = notation["directions"][release]["abbreviation"]
+            else:
+                releaseAbv = release
 
             result += f"[[File:{holdAbv}.png]][[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
 
-        elif (parseMoveType(move) == ","):
+        elif (currentMoveType == ","):
             result = result[:len(result) -1] + f"{move} "
             pass
         else:
@@ -216,167 +256,7 @@ def wikiMarkdownCreation(input):
             moveArrCurrentIndex += 1
             result += f"{move} "
 
-    print("Result:\n" + result)
-
-def imageCreation(input):
-
-    # input contents array population
-    inputContentsArrPush(input.replace(",", " ,"))
-    inputContentsArrCurrentIndex = 0
-    moveArrCurrentIndex = 0
-
-    # canvas preparation
-    canvasWidth, canvasHeight = 400, 37
-    canvasSize = (canvasWidth, canvasHeight)
-    canvas = Image.new('RGBA', canvasSize)
-    # for putting text on the image ("+", etc.)
-    draw = ImageDraw.Draw(canvas)
-
-    # these values are adjusted to determine where to put the next image or text used in the completed image
-    nextWidth = nextHeight = 0
-
-    # function for determining how many pixels away to place the next image element, depending on what the current and next ones are
-    def incWidth(stateFrom, stateTo, dirOrMotionNum):
-        addend = 0
-
-        if (stateFrom == "direction" and stateTo == "plus"):
-            if (dirOrMotionNum == "1" or dirOrMotionNum == "2" or dirOrMotionNum == "4" or dirOrMotionNum == "5" or dirOrMotionNum == "7" or dirOrMotionNum == "8"):
-                addend = 36
-            elif (dirOrMotionNum == "3" or dirOrMotionNum == "9"):
-                addend = 37
-            elif (dirOrMotionNum == "6"):
-                addend = 41
-
-            # print("before \"direction\" -> \"plus\": " + str(nextWidth))
-            # print("after \"direction\" -> \"plus\": " + str(nextWidth+addend))
-            # print("")
-        elif (stateFrom == "motion" and stateTo == "plus"):
-            if (dirOrMotionNum == "236"):
-                addend = 41
-            else:
-                addend = 36
-
-            # print("before \"motion\" -> \"plus\": " + str(nextWidth))
-            # print("after \"motion\" -> \"plus\": " + str(nextWidth+addend))
-            # print("")
-        elif (stateFrom == "plus" and stateTo == "button"):
-            addend = 18
-
-            # print("before \"plus\" -> \"button\": " + str(nextWidth))
-            # print("after \"plus\" -> \"button\": " + str(nextWidth+addend))
-            # print("")
-        elif (stateFrom == "button" and stateTo == ">"):
-            addend = 32
-
-            # print("before \"button\" -> \">\": " + str(nextWidth))
-            # print("after \"button\" -> \">\": " + str(nextWidth+addend))
-            # print("")
-        elif (stateFrom == ">" and stateTo == "button"):
-            addend = 12
-
-            # print("before \">\" -> \"button\": " + str(nextWidth))
-            # print("after \">\" -> \"button\": " + str(nextWidth+addend))
-            # print("")
-        elif (stateFrom == ">" and stateTo == "motion"):
-            if (dirOrMotionNum == "236"):
-                addend = 12
-            elif (dirOrMotionNum == "214"):
-                addend = 17
-            else:
-                addend = 120
-
-            # print("before \">\" -> \"motion\": " + str(nextWidth))
-            # print("after \">\" -> \"motion\": " + str(nextWidth+addend))
-            # print("")
-
-        return(addend)
-
-    def drawPlus(w,h):
-        draw.text((w,h), "+", font=ImageFont.truetype("FreeSans.ttf", 24), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
-
-    def drawComma(w,h):
-        draw.text((w,h), ",", font=ImageFont.truetype("FreeSans.ttf", 18), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
-
-    def drawArrow(w,h):
-        draw.text((w,h), ">", font=ImageFont.truetype("FreeSans.ttf", 18), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
-
-    def drawxx(w,h):
-        draw.text((w,h), "xx", font=ImageFont.truetype("FreeSans.ttf", 18), fill=(255,255,255,255), stroke_width=2, stroke_fill=(0,0,0,255))
-
-    # automated image assembly using other functions for info
-    for move in input.split(" "):
-        print("\"" + move + "\"")
-        print("return data: " + str(moveTranslation(move)))
-        print("move is: " + str(parseMoveType(move)))
-        print(" ")
-
-        nextMove = getNextMove()
-        nextMoveType = parseMoveType(nextMove)
-
-        if (parseMoveType(move) == None):
-            pass
-        elif (parseMoveType(move) == "button"):
-            # if neutral...no direction?
-            # different width spacing depending on direction before text...arrow can get in way
-            dirNum = moveTranslation(move)[0].lower()
-            btn = moveTranslation(move)[1].lower()
-            numOfHits = moveTranslation(move)[2]
-
-            dirAbv = notation["directions"][dir]["abbreviation"]
-            dirImg = Image.open(f"./images/directions/{dirAbv}.png")
-            btnImg = Image.open(f"./images/buttons/{btn}.png")
-
-            canvas.paste(dirImg, (nextWidth, nextHeight))
-            nextWidth += incWidth("direction", "plus", dirNum)
-            drawPlus(nextWidth, 5)
-            nextWidth += incWidth("plus", "button", 0)
-            canvas.paste(btnImg, (nextWidth, 7))
-
-            nextWidth += incWidth("button", nextMoveType, 0)
-            inputContentsArrCurrentIndex += 1
-            moveArrCurrentIndex += 1
-        elif (parseMoveType(move) == "motion"):
-            motionNum = moveTranslation(move)[0].lower()
-            btn = moveTranslation(move)[1].lower()
-
-            motionAbv = notation["motions"][motionNum]["abbreviation"]
-            motionImg = Image.open(f"./images/motions/{motionAbv}.png")
-            btnImg = Image.open(f"./images/buttons/{btn}.png")
-
-            canvas.paste(motionImg, (nextWidth, nextHeight))
-            nextWidth += incWidth("motion", "plus", motionNum)
-            drawPlus(nextWidth, 5)
-            nextWidth += incWidth("plus", "button", 0)
-            canvas.paste(btnImg, (nextWidth, 7))
-
-            nextWidth += incWidth("button", nextMoveType, 0)
-            inputContentsArrCurrentIndex += 1
-            moveArrCurrentIndex += 1
-        elif (parseMoveType(move) == "charge"):
-            pass
-        elif (parseMoveType(move) == ">"):
-            drawArrow(nextWidth,7)
-            # print(f"before \">\" -> \"{nextMoveType}\": " + str(nextWidth))
-
-            if (nextMoveType == "motion"):
-                motionNum = moveTranslation(nextMove)[0].lower()
-                nextWidth += incWidth(">", nextMoveType, str(motionNum))
-                pass
-            else:
-                nextWidth += incWidth(">", nextMoveType, 0)
-                pass
-
-            # print(f"after \">\" -> \"{nextMoveType}\": " + str(nextWidth))
-            # print("")
-            inputContentsArrCurrentIndex += 1
-            moveArrCurrentIndex += 1
-
-        elif (parseMoveType(move) == ","):
-            pass
-        elif (parseMoveType(move) == "xx"):
-            pass
-
-        canvas.save("./move.png", "PNG")
+    print("Result:\n" + result + "\n--------")
 
 def syntaxChecking(string):
     if ("(" in string or ")" in string):
@@ -394,36 +274,67 @@ def syntaxChecking(string):
             # exception later/if necessary
             sys.exit(1)
 
+def whichNotation(move):
+    if (move == ">" or move == "xx" or move == ","):
+        return
+   
+    if (move[0].isdigit() or move[1].isdigit()):
+        # print(f"Assuming move {move} is in numpad notation")
+        return("numpad")
+    else:
+        # print(f"Assuming move {move} is not in numpad notation")
+        return("capcom")
+
 def parseMoveType(move):
     if (move == None):
         return
-    # print(f"(parseMoveType) Checking syntax of move '{move}'")
-    syntaxChecking(move)
     if (move == ">"):
         return(">")
     elif (move == "xx"):
         return("xx")
     elif (move == ","):
         return(",")
-    # elif (move == ","):
-        # return(",")
-    # if the first character in this move is a bracket, this is a charge move
+
+    moveNotation = whichNotation(move)
+
+    # if there are brackets in this move, this is a charge move ("[2]8LK... or [d]u+lk?")
     if (("[" in move or "]" in move)):
         return("charge")
-    # else, if it's a number (we assume for now)...
     else:
-        # if the second character of this move is also a number,
-        # it's an abbreviation for an attack strength level (l for light, h for heavy, etc)...
-        try:
-            if ((move[1]).isdigit()):
-                return("motion")
-        except:
-            pass
-        # else, it's number notation for a direction + a button
-        else:
-            return("button")
+        if (moveNotation == "numpad"):
+            try:
+                # else, if we're in numpad notation and the second character of this move is a number, this is a motion (ie. 236HP)
+                if ((move[1]).isdigit()):
+                    return("motion")
+            except:
+                pass
+            else:
+                # else, it's numpad notation for a direction + a button (ie. 2MK)
+                return("button")
+        elif (moveNotation == "capcom"):
+            for motionKey in notation["motions"]:
+                # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
+                if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
+                    return("motion")
 
-customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
+            for btnKey in notation["buttons"]["sf"]:
+                if ("(" in move or ")" in move):
+                    lpi = [i for i, c in enumerate(move) if c == "("]
+                    move = move[0:lpi[0]]
+
+                btnLength = len(btnKey)
+                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
+                if (btnKey.lower() == move[-btnLength:].lower()):
+                    return("button")
+
+# customTranslations = {"236*K": "Lightning Legs", "[1/2/3]7/8/9*K" : "Spinning Bird Kick"};
+customTranslations = {
+    "Shoryuken": {
+        "input" : "623*P",
+        "moveType" : "motion",
+        "aliases" : ["dp", "shoryu"]
+    }
+}
 
 def customTranslationParsing():
     # custom translation handling
@@ -435,66 +346,109 @@ def customTranslationParsing():
 
 
 def moveTranslation(move):
-    # print(f"(moveTranslation) Checking syntax of move '{move}'")
-    syntaxChecking(move)
+    # moves of any language will return numpad here
+    moveType = parseMoveType(move)
+    notationType = whichNotation(move)
 
-    if (parseMoveType(move) == None):
+    if (moveType == None):
         pass
-    elif (parseMoveType(move) == "charge"):
-        lbi = move.index("[")+1
-        rbi = move.index("]")
-
-        hold = move[lbi:rbi]
-        release = move[rbi+1:rbi+2]
-        btn = move[4] + move[5]
-
-        return({"hold": hold, "release": release, "btn": btn})
-    elif (parseMoveType(move) == "motion"):
-        if (len(move) != 3 and int(move[0:2]) > 9):
-            attackStrengths = ["L", "M", "H"]
-            for element in attackStrengths:
-                if (move.partition(element)[2] != ""):
-                    motionNum = move.partition(element.upper())[0]
-                    btn =  move.partition(element.upper())[1] + move.partition(element.upper())[2]
-
-                    return({"motionNum": motionNum, "btn": btn})
-    elif (parseMoveType(move) == "button"):
-        direction = move[0]
-        btn = move[1]+move[2]
-        if (("(" in move or ")" in move)):
-            numOfHits = move[4]
-        else:
-            numOfHits = 0
-
-        return({"direction": direction, "btn": btn, "numOfHits": numOfHits})
-    elif (parseMoveType(move) == "xx"):
+    elif (moveType == "xx"):
         return("xx")
-    elif (parseMoveType(move) == ">"):
+    elif (moveType == ">"):
         return(">")
-    elif (parseMoveType(move) == ","):
+    elif (moveType == ","):
         return(",")
 
-def inputContentsArrPush(input):
-    print("Input: " + str(input))
-    split = input.split(" ")
-    for move in split:
-        moveArr.append(move)
-        inputContentsArr.append(parseMoveType(move))
+    if (notationType == "numpad"):
 
-        # print("\"" + move + "\"")
-        # print("return data: " + str(moveTranslation(move)))
-        # print("move is: " + str(parseMoveType(move)))
-        # print(" ")
+        if (moveType == "charge"):
+            lbi = move.index("[")+1
+            rbi = move.index("]")
 
-    print("moveArr: " + str(moveArr))
-    print("inputContentsArr: " + str(inputContentsArr) + "\n----")
+            hold = move[lbi:rbi]
+            release = move[rbi+1:rbi+2]
+            btn = move[4] + move[5]
 
-    # print(moveArr)
-    # print(inputContentsArr)
-    # print("----\n")
+            return({"hold": hold, "release": release, "btn": btn})
+        elif (moveType == "motion"):
+            if (len(move) != 3 and int(move[0:2]) > 9):
+                attackStrengths = ["L", "M", "H"]
+                for element in attackStrengths:
+                    if (move.partition(element)[2] != ""):
+                        motionNum = move.partition(element.upper())[0]
+                        btn =  move.partition(element.upper())[1] + move.partition(element.upper())[2]
+
+                        return({"motionNum": motionNum, "btn": btn})
+        elif (moveType == "button"):
+            direction = move[0]
+            btn = move[1]+move[2]
+            if (("(" in move or ")" in move)):
+                numOfHits = move[4]
+            else:
+                numOfHits = 0
+
+            return({"directions": direction, "btn": btn, "numOfHits": numOfHits})
+    elif (notationType == "capcom"):
+
+        def findBtn():
+            for btnKey in notation["buttons"]["sf"]:
+                btnLength = len(btnKey)
+                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
+                if (btnKey.lower() == move[-btnLength:].lower()):
+                    return(btnKey)
+
+        if (moveType == "charge"):
+
+            lbi = move.index("[")+1
+            rbi = move.index("]")
+
+            hold = move[lbi:rbi]
+            release = move[rbi+1:rbi+2]
+
+            btn = findBtn()
+
+            return({"hold": hold, "release": release, "btn": btn})
+        elif (moveType == "motion"):
+            for motionKey in notation["motions"]:
+                # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
+                if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
+                    motionNum = motionKey
+
+            btn = findBtn()
+
+            return({"motionNum": motionNum, "btn": btn})
+        elif (moveType == "button"):
+
+            if (len(move) == 2):
+                directions = 5
+               
+            if ("(" in move or ")" in move):
+                numOfHits = move[move.index("(")+1:move.index(")")]
+                lpi = [i for i, c in enumerate(move) if c == "("]
+                rpi = [i for i, c in enumerate(move) if c == ")"]
+                move = move[0:lpi[0]]
+            else:
+                numOfHits = 0
+
+            btn = findBtn()
+
+            if ("." in move):
+                dotIndex = move.index(".")
+                directionStateAbv = ""
+                directions = []
+                for key in notation["directions"]:
+                    if (notation["directions"][key]["stateAbv"] == move[0:dotIndex+1]):
+                        directions.append(key)
+
+            return({"directions": directions, "btn": btn, "numOfHits": numOfHits})
 
 # customTranslationParsing()
-toTranslate = "2HP(1) > 236LK, 2LP > [2]8LK"
+numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
+capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk"
 # imageCreation(toTranslate)
-wikiMarkdownCreation(toTranslate)
-# wikiMarkdownCreation("2LP > 5MP > 2MK > [2]8LK")
+wikiMarkdownCreation(numpadString)
+wikiMarkdownCreation(capcomString)
+wikiMarkdownCreation("5MP, 5HP")
+wikiMarkdownCreation("MP, 5HP")
+wikiMarkdownCreation("5MP, HP")
+wikiMarkdownCreation("MP, HP")
