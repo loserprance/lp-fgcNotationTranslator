@@ -1,6 +1,6 @@
 # packages/dependancies
 from PIL import Image, ImageFont, ImageDraw
-import sys
+import sys, json
 
 # NEXT STEPS:
 # custom translating ("shoryuken" -> "623P"...)
@@ -160,145 +160,83 @@ def getNextMove():
         return(None)
 
 def wikiMarkdownCreation(input):
-    moveArr = []            # list of moves from received input split by spaces (st.hk, 2MK, lightning legs, etc.)
-    moveTypeArr = []        # list of move types of moves from moveArr (button, charge, motion, custom, etc.)
-    moveArrCurrentIndex = 0 # index of move currently being inspected in moveArr
-    wikiText = ""           # contains a string of text meant for use on a wiki like srk wiki, taken from translated input
-    customPhraseNum = 0     # used for following variable "cmi". goes up when the next word being inspected in moveArr is not a custom word, so we know when to start categorizing the next custom move
+    moveArr = []
+    inputContentsArr = []
+    moveArrCurrentIndex = 0
+    inputContentsArrCurrentIndex = 0
+    result = ""
 
-    print("Input: " + str(input) + "\n----")
+    print("Input: " + str(input))
     syntaxChecking(input)
 
+    input = input.replace(",", " ,")
     # input contents array population
-    input = input.replace(",", " ,") # used to split commas properly; commas denote links, ">", "xx" denote cancels
     split = input.split(" ")
     for move in split:
         moveArr.append(move)
-        moveTypeArr.append(parseMoveType(move))
+        inputContentsArr.append(parseMoveType(move))
 
-    print("moveArr:     " + str(moveArr))
-    print("moveTypeArr: " + str(moveTypeArr) + "\n----")
+        # print("\"" + move + "\"")
+        # print("return data: " + str(moveTranslation(move)))
+        # print("move is: " + str(parseMoveType(move)))
+        # print(" ")
 
-    # if there are any custom move definitions in the list,
-    if ("custom?" in moveTypeArr):
-        # their indexes in moveTypeArr (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
+    print("moveArr: " + str(moveArr))
+    print("inputContentsArr: " + str(inputContentsArr) + "\n----")
+
+    # if there are any custom move definitions in the string,
+    if ("custom" in inputContentsArr):
+        # their indexes in inputContentsArr are stored in this dict
         cmi = {}
-        # if there are multiple values in moveTypeArr labeled as "custom" following each other, they must be referencing one move with multiple words (ie. "lightning legs")
-        # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
+        # if there are multiple values in inputContentsArr labeled as "custom" following each other, they must be referencing one move with multiple words (ie. "lightning legs")
+        # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values, and when it ends, begin searching for another custom definition
         customStreak = False
-        streakJustIncremented = False
-        # when the streak ends, continue combing the list for the next occurence of a custom definition
+        customPhraseNum = 1
 
-        # loop through moveTypeArr to find all indexes that correspond to custom definitions look for
-        for loopIndex, value in enumerate(moveTypeArr):
-            if (value == "custom?"):
+        for loopIndex, value in enumerate(inputContentsArr):
+            if (value == "custom"):
                 if customStreak:
-                    cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
+                    cmi[f"custom{customPhraseNum}"]["indexes"].append(loopIndex)
                 else:
                     try:
-                        cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
+                        cmi[f"custom{customPhraseNum}"]["indexes"].append(loopIndex)
                     except:
-                        cmi[f"custom{customPhraseNum+1}"] = { "indexes": [], "moveName": "" }
-                        cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
+                        cmi[f"custom{customPhraseNum}"] = { "indexes": [], "moveName": "" }
+                        cmi[f"custom{customPhraseNum}"]["indexes"].append(loopIndex)
                     customStreak = True
             else:
                 customStreak = False
                 if (cmi != {}):
-                    if (not streakJustIncremented):
-                        customPhraseNum += 1
-                        streakJustIncremented = True
+                    customPhraseNum += 1
 
-        # after looping through moveTypeArr to populate cmi with custom move definition instances and list indexes, this loop is for
-        # finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
-        # keys in customTranslations and words in moveArr
-       
+        # next: inspect each key in cmi, relate the contents of the indexes for each to keys in customTranslations...
+        # use that info to replace "shoryuken" with 623*P, dp+hp, whatever in the end result/on an image
+
         # custom1, custom2...
         for cmiKey in cmi:
-            customMovePiecedFromMoveArr = ""
             # ["4", "5"], ["6"]...
+            customMovePiecedFromMoveArr = ""
             for cmiKeyIndex in cmi[cmiKey]["indexes"]:
                 customMovePiecedFromMoveArr += moveArr[cmiKeyIndex] + " "
+
                 # "Shoryuken", "Hadoken"...
                 for customMove in customTranslations:
-                    # todo: compare element in moveArr to alias
                     if (customMovePiecedFromMoveArr[:-1].lower() == customMove.lower()):
                         cmi[cmiKey]["moveName"] = customMove
 
-        # next, custom move definitions that have move names containing spaces or multiple words that take up
-        # multiple elements of the moveArr (and subsequently moveTypeArr) are combined into one entry, the
-        # extras being deleted. this is also where move types are changed from "custom?" to "custom"
-        def trimArrays(customPhraseNum):
-            for i in range(customPhraseNum):
-                numOfCustoms = len(cmi[f"custom{i+1}"]["indexes"])
-                indexFirstElement = cmi[f"custom{i+1}"]["indexes"][0]
-                indexLastElement = cmi[f"custom{i+1}"]["indexes"][-1]
-                # print(f"indexes first element: " + str(indexFirstElement))
-                # print(f"indexes last element: " + str(indexLastElement))
-
-                # joining elements together/trimming moveTypeArr
-                if (indexFirstElement != indexLastElement):
-                    # print(f"seeking to replace {moveArr[int(indexFirstElement):int(indexLastElement+1)]} with {[' '.join(moveArr[int(indexFirstElement):int(indexLastElement+1)])]} ")
-                    moveArr[indexFirstElement] = [' '.join(moveArr[int(indexFirstElement):int(indexLastElement+1)])][0]
-
-                    for x in range(numOfCustoms):
-                        if (x != 0):
-                            moveArr[cmi[f"custom{i+1}"]["indexes"][x]] = "toDel"
-
-                if (len(cmi[f"custom{i+1}"]["indexes"]) == 1):
-                    moveTypeArr[cmi[f"custom{i+1}"]["indexes"][0]] = "custom"
-                else:
-                    indexToCutoff = cmi[f"custom{i+1}"]["indexes"][1]
-
-                    for x in range(numOfCustoms):
-                        if (x == 0):
-                            moveTypeArr[cmi[f"custom{i+1}"]["indexes"][x]] = "custom"
-                        else:
-                            moveTypeArr[cmi[f"custom{i+1}"]["indexes"][x]] = "toDel"
-
-            while ("toDel" in moveArr):
-                moveArr.remove("toDel")
-            while ("toDel" in moveTypeArr):
-                moveTypeArr.remove("toDel")
-
-            arraysToReturn = []
-            arraysToReturn.append(moveArr)
-            arraysToReturn.append(moveTypeArr)
-            return(arraysToReturn)
-
-        # final update and state of arrays
-        newArrays = trimArrays(customPhraseNum)
-        moveArr = newArrays[0]
-        moveTypeArr = newArrays[1]
-
-        print("Final state of arrays:")
-        print("moveArr:     " + str(moveArr))
-        print("moveTypeArr: " + str(moveTypeArr))
-
-    for index, move in enumerate(moveArr):
+        print(cmi)
+    for move in split:
         nextMove = getNextMove()
         currentMoveType = parseMoveType(move)
         nextMoveType = parseMoveType(nextMove)
 
         if (currentMoveType == None):
             pass
-        elif (currentMoveType == "custom?"):
-            # todo/ideas:
-            # if movename contains light, medium, heavy...
-            # compare element in moveArr to alias
-            for customKey in customTranslations:
-                if (customKey.lower() == move.lower()):
-                    if (customTranslations[customKey]["moveType"] == "motion"):
-                        motionNum = moveTranslation(customKey, currentMoveType)["motionNum"]
-                        btn = moveTranslation(customKey, currentMoveType)["btn"].lower()
-
-                        if (btn[0] == "*"):
-                            btn = btn[1]
-
-                        motionAbv = notation["motions"][motionNum]["abbreviation"]
-                        wikiText += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
-
+        elif (currentMoveType == "custom"):
+            print("MY FRIEND JUST GOT DOWNED")
+            pass
         elif (currentMoveType == "button"):
-            validDirections = moveTranslation(move, currentMoveType)["directions"]
+            validDirections = moveTranslation(move)["directions"]
 
             if isinstance(validDirections, list):
                 if (validDirections == ["1", "2", "3"]):
@@ -308,30 +246,32 @@ def wikiMarkdownCreation(input):
             else:
                 direction = str(validDirections)
 
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
-            numOfHits = moveTranslation(move, currentMoveType)["numOfHits"]
+            btn = moveTranslation(move)["btn"].lower()
+            numOfHits = moveTranslation(move)["numOfHits"]
 
             dirAbv = notation["directions"][direction]["abbreviation"]
 
             if (dirAbv.lower() != "n"):
-                wikiText += f"[[File:{dirAbv}.png]] + "
+                result += f"[[File:{dirAbv}.png]] + "
 
             if (str(numOfHits) == "0"):
-                wikiText += f"[[File:{btn}.png]] "
+                result += f"[[File:{btn}.png]] "
             else:
-                wikiText += f"[[File:{btn}.png]] ({numOfHits}) "
+                result += f"[[File:{btn}.png]] ({numOfHits}) "
 
         elif (currentMoveType == "motion"):
-            motionNum = moveTranslation(move, currentMoveType)["motionNum"]
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
+            # print(moveTranslation(move))
+            motionNum = moveTranslation(move)["motionNum"]
+            btn = moveTranslation(move)["btn"].lower()
 
             motionAbv = notation["motions"][motionNum]["abbreviation"]
 
-            wikiText += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
+            result += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
         elif (currentMoveType == "charge"):
-            hold = moveTranslation(move, currentMoveType)["hold"]
-            release = moveTranslation(move, currentMoveType)["release"]
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
+            # print(moveTranslation(move))
+            hold = moveTranslation(move)["hold"]
+            release = moveTranslation(move)["release"]
+            btn = moveTranslation(move)["btn"].lower()
 
             if (hold.isdigit()):
                 holdAbv = notation["directions"][hold]["abbreviation"]
@@ -343,16 +283,17 @@ def wikiMarkdownCreation(input):
             else:
                 releaseAbv = release
 
-            wikiText += f"[ [[File:{holdAbv}.png]] ] [[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
+            result += f"[ [[File:{holdAbv}.png]] ] [[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
 
         elif (currentMoveType == ","):
-            wikiText = wikiText[:len(wikiText) -1] + f"{move} "
+            result = result[:len(result) -1] + f"{move} "
             pass
         else:
-            wikiText += f"{move} "
+            result += f"{move} "
 
+        inputContentsArrCurrentIndex += 1
         moveArrCurrentIndex += 1
-    print("\n" + wikiText + "\n--------")
+    print("Result:\n" + result + "\n--------")
 
 def syntaxChecking(string):
     if ("(" in string or ")" in string):
@@ -424,39 +365,21 @@ def parseMoveType(move):
                 if (btnKey.lower() == move[-btnLength:].lower()):
                     return("button")
 
-    return("custom?")
+    return("custom")
 
 customTranslations = {
     "Shoryuken": {
         "input" : {
-            "numpadInput" : "623",
+            "dirOrMotion" : "623",
             "strength" : "*",
             "attack" : "Punch"
         },
         "moveType" : "motion",
         "aliases" : ["dp", "shoryu"]
     },
-    "Spinning Bird Kick": {
-        "input" : {
-            "numpadInput" : "[2]8",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "charge",
-        "aliases" : ["sbk"]
-    },
-    "Lightning Legs": {
-        "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "motion",
-        "aliases" : ["legs", "hyak"]
-    },
     "Donkey Kick": {
         "input" : {
-            "numpadInput" : "41236",
+            "dirOrMotion" : "41236",
             "strength" : "*",
             "attack" : "Kick"
         },
@@ -465,16 +388,7 @@ customTranslations = {
     },
     "Hadoken": {
         "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Punch"
-        },
-        "moveType" : "motion",
-        "aliases" : ["fireball", "fb", "hadouken"]
-    },
-    "big big brongus": {
-        "input" : {
-            "numpadInput" : "236",
+            "dirOrMotion" : "236",
             "strength" : "*",
             "attack" : "Punch"
         },
@@ -483,26 +397,10 @@ customTranslations = {
     }
 }
 
-def moveTranslation(m, mt):
+def moveTranslation(move):
     # moves of any language will return numpad here
-    move = m
-    moveType = mt
-
+    moveType = parseMoveType(move)
     notationType = whichNotation(move)
-
-    if (mt == "custom?"):
-        # print(customTranslations[move])
-        # print("CUSTOM IN MOVE TRANSLATION!")
-
-        numpadInput = customTranslations[m]["input"]["numpadInput"]
-        strength = customTranslations[m]["input"]["strength"]
-        attack = customTranslations[m]["input"]["attack"][0]
-
-        moveType = customTranslations[m]["moveType"]
-        notationType = "numpad"
-
-        move = str(numpadInput) + str(strength) + str(attack)
-        print(f"{m} -> {move}")
 
     if (notationType == "numpad"):
 
@@ -517,11 +415,11 @@ def moveTranslation(m, mt):
             return({"hold": hold, "release": release, "btn": btn})
         elif (moveType == "motion"):
             if (len(move) != 3 and int(move[0:2]) > 9):
-                attackStrengths = ["L", "M", "H", "*", "EX", "l", "m", "h", "eX", "Ex", "ex"]
+                attackStrengths = ["L", "M", "H"]
                 for element in attackStrengths:
                     if (move.partition(element)[2] != ""):
-                        motionNum = move.partition(element)[0]
-                        btn = move.partition(element)[1].upper() + move.partition(element)[2].upper()
+                        motionNum = move.partition(element.upper())[0]
+                        btn =  move.partition(element.upper())[1] + move.partition(element.upper())[2]
 
                         return({"motionNum": motionNum, "btn": btn})
         elif (moveType == "button"):
@@ -592,7 +490,6 @@ capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk"
 # imageCreation(toTranslate)
 # wikiMarkdownCreation(numpadString)
 # wikiMarkdownCreation(capcomString)
-# wikiMarkdownCreation("st.hk, st.lk > shoryuken > big big brongus > donkey kick")
-# wikiMarkdownCreation("st.hk, st.lk > big big brongus")
-wikiMarkdownCreation("st.hK, st.Lk > 236lp > lightning legs > qcf+hp")
+wikiMarkdownCreation("st.hk, st.lk > donkey kick > shoryuken")
+# wikiMarkdownCreation("st.hk, st.lk > lightning legs > qcf+hp")
 # wikiMarkdownCreation("st.mp, cr.hp > tatsu > donkey kick")

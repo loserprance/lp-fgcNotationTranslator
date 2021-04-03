@@ -1,3 +1,0 @@
-sf5 chun combo
-cr.hp(1) > l.legs > cr.lp > l.sbk
-2HP(1), 236LK, 2LP, [2]8LK
