@@ -2,9 +2,15 @@
 from PIL import Image, ImageFont, ImageDraw
 import sys
 
-# NEXT STEPS:
-# custom translating ("shoryuken" -> "623P"...)
+# NEXT STEPS AND GOALS:
 # reimplement image function/incorporate into wiki function
+# change wikitext into an array, then when the entire process is done build wiki markdown/image from array instructions
+# less lists, more dicts?
+
+# create a tool that turns fighting game notation of all languages (numpad notation, "capcom", etc.) into
+	# images from icons with the use of PIL
+	# markdown useful for srk wiki
+	# useful for FAT in some way?
 
 # different "languages" of fg notation exist...capcom (jab,short,fierce), numpad, snk?
 # numpad notation is used as a base for directions and motions
@@ -151,140 +157,122 @@ notation = {
     }
 }
 
-def getNextMove():
-    try:
-        # print("    Current move: " + moveArr[moveArrCurrentIndex])
-        # print("    Next move: " + moveArr[moveArrCurrentIndex+1])
-        return(moveArr[moveArrCurrentIndex+1])
-    except:
-        return(None)
-
 def wikiMarkdownCreation(input):
-    moveArr = []            # list of moves from received input split by spaces (st.hk, 2MK, lightning legs, etc.)
-    moveTypeArr = []        # list of move types of moves from moveArr (button, charge, motion, custom, etc.)
-    moveArrCurrentIndex = 0 # index of move currently being inspected in moveArr
-    wikiText = ""           # contains a string of text meant for use on a wiki like srk wiki, taken from translated input
-    customPhraseNum = 0     # used for following variable "cmi". goes up when the next word being inspected in moveArr is not a custom word, so we know when to start categorizing the next custom move
+    moveDict = {}
+    resultArr = []          # list of moves to combine into string once text processing has finished
 
     print("Input: " + str(input) + "\n----")
     syntaxChecking(input)
 
-    # input contents array population
+    # array population
     input = input.replace(",", " ,") # used to split commas properly; commas denote links, ">", "xx" denote cancels
     split = input.split(" ")
-    for move in split:
-        moveArr.append(move)
-        moveTypeArr.append(parseMoveType(move))
+    for i, move in enumerate(split):
+        moveDict[i] = {}
+        moveDict[i]["move"] = move
+        moveDict[i]["moveType"] = parseMoveType(move)
 
-    print("moveArr:     " + str(moveArr))
-    print("moveTypeArr: " + str(moveTypeArr) + "\n----")
+        if (move == "xx" or move == ">"):
+            moveDict[i]["cancelType"] = "cancel"
+        elif (move == ","):
+            moveDict[i]["cancelType"] = "link"
 
-    # if there are any custom move definitions in the list,
-    if ("custom?" in moveTypeArr):
-        # their indexes in moveTypeArr (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
-        cmi = {}
-        # if there are multiple values in moveTypeArr labeled as "custom" following each other, they must be referencing one move with multiple words (ie. "lightning legs")
-        # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
-        customStreak = False
-        streakJustIncremented = False
-        # when the streak ends, continue combing the list for the next occurence of a custom definition
+    # if there are any custom move definitions that need to be turned into notation,
+    # their indexes in moveDict (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
+    cmi = {}
+    customPhraseNum = 1     # used for following variable "cmi". goes up when the next word being inspected in moveDict is not a custom word, so we know when to start categorizing the next custom move
+    # if there are multiple moves with moveType "custom?" occuring in moveDict sequentially, they must be referencing one move with multiple words (ie. "lightning legs")
+    # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
+    customStreak = False
+    streakJustIncremented = False
+    # when the streak ends, continue combing the list for the next occurence of a custom definition
+    for i in moveDict:
+        move = moveDict[i]
+        moveType = moveDict[i]["moveType"]
+        print(f"{i}: {move}")
 
-        # loop through moveTypeArr to find all indexes that correspond to custom definitions look for
-        for loopIndex, value in enumerate(moveTypeArr):
-            if (value == "custom?"):
-                if customStreak:
-                    cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
-                else:
-                    try:
-                        cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
-                    except:
-                        cmi[f"custom{customPhraseNum+1}"] = { "indexes": [], "moveName": "" }
-                        cmi[f"custom{customPhraseNum+1}"]["indexes"].append(loopIndex)
-                    customStreak = True
+        if (moveType == "custom?"):
+            if customStreak:
+                cmi[f"custom{customPhraseNum}"]["indexes"].append(i)
             else:
-                customStreak = False
-                if (cmi != {}):
-                    if (not streakJustIncremented):
-                        customPhraseNum += 1
-                        streakJustIncremented = True
+                try:
+                    cmi[f"custom{customPhraseNum}"]["indexes"].append(i)
+                except:
+                    cmi[f"custom{customPhraseNum}"] = { "indexes": [], "moveName": "" }
+                    cmi[f"custom{customPhraseNum}"]["indexes"].append(i)
+                customStreak = True
+        else:
+            customStreak = False
+            if (cmi != {}):
+                if (not streakJustIncremented):
+                    customPhraseNum += 1
+                    streakJustIncremented = True
 
-        # after looping through moveTypeArr to populate cmi with custom move definition instances and list indexes, this loop is for
-        # finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
-        # keys in customTranslations and words in moveArr
-       
-        # custom1, custom2...
-        for cmiKey in cmi:
-            customMovePiecedFromMoveArr = ""
-            # ["4", "5"], ["6"]...
-            for cmiKeyIndex in cmi[cmiKey]["indexes"]:
-                customMovePiecedFromMoveArr += moveArr[cmiKeyIndex] + " "
-                # "Shoryuken", "Hadoken"...
-                for customMove in customTranslations:
-                    # todo: compare element in moveArr to alias
-                    if (customMovePiecedFromMoveArr[:-1].lower() == customMove.lower()):
+    # after looping through moveDict move types to populate cmi with custom move definition instances and list indexes, this loop is for
+    # finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
+    # keys in customTranslations and words in moveDict
+
+    # custom1, custom2...
+    for cmiKey in cmi:
+        customMovePiecedFromMoveDict = ""
+        # ["4", "5"], ["6"]...
+        for cmiKeyIndex in cmi[cmiKey]["indexes"]:
+            customMovePiecedFromMoveDict += moveDict[cmiKeyIndex]["move"]  + " "
+            # "Shoryuken", "Hadoken"...
+            for customMove in customTranslations:
+                if (customMovePiecedFromMoveDict[:-1].lower() == customMove.lower()):
+                    cmi[cmiKey]["moveName"] = customMove
+                for alias in customTranslations[customMove]["aliases"]:
+                    if (customMovePiecedFromMoveDict[:-1].lower() == alias.lower()):
                         cmi[cmiKey]["moveName"] = customMove
+                        moveDict[cmi[cmiKey]["indexes"][0]]["move"] = customMove
 
-        # next, custom move definitions that have move names containing spaces or multiple words that take up
-        # multiple elements of the moveArr (and subsequently moveTypeArr) are combined into one entry, the
-        # extras being deleted. this is also where move types are changed from "custom?" to "custom"
-        def trimArrays(customPhraseNum):
-            for i in range(customPhraseNum):
-                numOfCustoms = len(cmi[f"custom{i+1}"]["indexes"])
-                indexFirstElement = cmi[f"custom{i+1}"]["indexes"][0]
-                indexLastElement = cmi[f"custom{i+1}"]["indexes"][-1]
-                # print(f"indexes first element: " + str(indexFirstElement))
-                # print(f"indexes last element: " + str(indexLastElement))
+    # next, custom move definitions that have move names containing spaces or multiple words that take up
+    # multiple elements of the moveDict are combined into one entry, the
+    # extras being deleted. this is also where move types are changed from "custom?" to "custom"
 
-                # joining elements together/trimming moveTypeArr
-                if (indexFirstElement != indexLastElement):
-                    # print(f"seeking to replace {moveArr[int(indexFirstElement):int(indexLastElement+1)]} with {[' '.join(moveArr[int(indexFirstElement):int(indexLastElement+1)])]} ")
-                    moveArr[indexFirstElement] = [' '.join(moveArr[int(indexFirstElement):int(indexLastElement+1)])][0]
+    def trimDict(customPhraseNum):
+        for i in range(1,customPhraseNum+1):
+            numOfCustoms = len(cmi[f"custom{i}"]["indexes"])
+            indexFirstElement = cmi[f"custom{i}"]["indexes"][0]
+            indexLastElement = cmi[f"custom{i}"]["indexes"][-1]
 
-                    for x in range(numOfCustoms):
-                        if (x != 0):
-                            moveArr[cmi[f"custom{i+1}"]["indexes"][x]] = "toDel"
+            if (indexFirstElement != indexLastElement):
+                for x in range(numOfCustoms):
+                    dictIndex = cmi[f"custom{i}"]["indexes"][x]
+                    if (x == 0):
+                        moveDict[dictIndex]["move"] = cmi[f"custom{i}"]["moveName"]
+                        moveDict[dictIndex]["moveType"] = "custom"
+                    else:
+                        moveDict[dictIndex] = "toDel"
+            else:
+                dictIndex = indexFirstElement
+                moveDict[dictIndex]["move"] = cmi[f"custom{i}"]["moveName"]
+                moveDict[dictIndex]["moveType"] = "custom"
 
-                if (len(cmi[f"custom{i+1}"]["indexes"]) == 1):
-                    moveTypeArr[cmi[f"custom{i+1}"]["indexes"][0]] = "custom"
-                else:
-                    indexToCutoff = cmi[f"custom{i+1}"]["indexes"][1]
+        return(moveDict)
 
-                    for x in range(numOfCustoms):
-                        if (x == 0):
-                            moveTypeArr[cmi[f"custom{i+1}"]["indexes"][x]] = "custom"
-                        else:
-                            moveTypeArr[cmi[f"custom{i+1}"]["indexes"][x]] = "toDel"
+    moveDict = trimDict(customPhraseNum)
 
-            while ("toDel" in moveArr):
-                moveArr.remove("toDel")
-            while ("toDel" in moveTypeArr):
-                moveTypeArr.remove("toDel")
+    # fix indexes/more moredict info pop?
+    for i in range(len(moveDict)):
+        if (moveDict[i] == "toDel"):
+            del (moveDict[i])
 
-            arraysToReturn = []
-            arraysToReturn.append(moveArr)
-            arraysToReturn.append(moveTypeArr)
-            return(arraysToReturn)
-
-        # final update and state of arrays
-        newArrays = trimArrays(customPhraseNum)
-        moveArr = newArrays[0]
-        moveTypeArr = newArrays[1]
-
-        print("Final state of arrays:")
-        print("moveArr:     " + str(moveArr))
-        print("moveTypeArr: " + str(moveTypeArr))
-
-    for index, move in enumerate(moveArr):
-        nextMove = getNextMove()
-        currentMoveType = parseMoveType(move)
-        nextMoveType = parseMoveType(nextMove)
+    for i in moveDict:
+        move = moveDict[i]["move"]
+        currentMoveType = moveDict[i]["moveType"]
+        try:
+            nextMoveType = moveDict[i+1]["moveType"]
+        except:
+            nextMoveType = None
 
         if (currentMoveType == None):
             pass
-        elif (currentMoveType == "custom?"):
+        elif (currentMoveType == "custom"):
             # todo/ideas:
             # if movename contains light, medium, heavy...
-            # compare element in moveArr to alias
+            # compare element in moveDict to alias
             for customKey in customTranslations:
                 if (customKey.lower() == move.lower()):
                     if (customTranslations[customKey]["moveType"] == "motion"):
@@ -293,9 +281,11 @@ def wikiMarkdownCreation(input):
 
                         if (btn[0] == "*"):
                             btn = btn[1]
+                            # del (resultArr[-1])
+                            # btn = moveArr[moveArrCurrentIndex-1].lower()
 
                         motionAbv = notation["motions"][motionNum]["abbreviation"]
-                        wikiText += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
+                        resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
 
         elif (currentMoveType == "button"):
             validDirections = moveTranslation(move, currentMoveType)["directions"]
@@ -314,12 +304,12 @@ def wikiMarkdownCreation(input):
             dirAbv = notation["directions"][direction]["abbreviation"]
 
             if (dirAbv.lower() != "n"):
-                wikiText += f"[[File:{dirAbv}.png]] + "
+                resultArr.append(f"[[File:{dirAbv}.png]] + ")
 
             if (str(numOfHits) == "0"):
-                wikiText += f"[[File:{btn}.png]] "
+                resultArr.append(f"[[File:{btn}.png]] ")
             else:
-                wikiText += f"[[File:{btn}.png]] ({numOfHits}) "
+                resultArr.append(f"[[File:{btn}.png]] ({numOfHits}) ")
 
         elif (currentMoveType == "motion"):
             motionNum = moveTranslation(move, currentMoveType)["motionNum"]
@@ -327,7 +317,7 @@ def wikiMarkdownCreation(input):
 
             motionAbv = notation["motions"][motionNum]["abbreviation"]
 
-            wikiText += f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] "
+            resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
         elif (currentMoveType == "charge"):
             hold = moveTranslation(move, currentMoveType)["hold"]
             release = moveTranslation(move, currentMoveType)["release"]
@@ -343,16 +333,29 @@ def wikiMarkdownCreation(input):
             else:
                 releaseAbv = release
 
-            wikiText += f"[ [[File:{holdAbv}.png]] ] [[File:{releaseAbv}.png]] + [[File:{btn}.png]] "
+            resultArr.append(f"[ [[File:{holdAbv}.png]] ] [[File:{releaseAbv}.png]] + [[File:{btn}.png]] ")
 
         elif (currentMoveType == ","):
-            wikiText = wikiText[:len(wikiText) -1] + f"{move} "
+            resultArr[-1] = (resultArr[-1])[0:len(resultArr[-1])-1]
+            resultArr.append(", ")
             pass
         else:
-            wikiText += f"{move} "
+            resultArr.append(f"{move} ")
 
-        moveArrCurrentIndex += 1
-    print("\n" + wikiText + "\n--------")
+    finalResult = ""
+    for move in resultArr:
+        finalResult += move
+        # print(move)
+
+    print("--")
+    for i in moveDict:
+        move = moveDict[i]
+        moveType = moveDict[i]["moveType"]
+        print(f"{i}: {move}")
+
+    print("--")
+    print(finalResult)
+    print("----\n")
 
 def syntaxChecking(string):
     if ("(" in string or ")" in string):
@@ -436,6 +439,15 @@ customTranslations = {
         "moveType" : "motion",
         "aliases" : ["dp", "shoryu"]
     },
+    "Tatsumaki Senpukyaku": {
+        "input" : {
+            "numpadInput" : "214",
+            "strength" : "*",
+            "attack" : "Kick"
+        },
+        "moveType" : "motion",
+        "aliases" : ["tatsu", "hurricane"]
+    },
     "Spinning Bird Kick": {
         "input" : {
             "numpadInput" : "[2]8",
@@ -490,7 +502,7 @@ def moveTranslation(m, mt):
 
     notationType = whichNotation(move)
 
-    if (mt == "custom?"):
+    if (mt == "custom"):
         # print(customTranslations[move])
         # print("CUSTOM IN MOVE TRANSLATION!")
 
@@ -502,7 +514,6 @@ def moveTranslation(m, mt):
         notationType = "numpad"
 
         move = str(numpadInput) + str(strength) + str(attack)
-        print(f"{m} -> {move}")
 
     if (notationType == "numpad"):
 
@@ -588,11 +599,12 @@ def moveTranslation(m, mt):
             return({"directions": directions, "btn": btn, "numOfHits": numOfHits})
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
-capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk"
+capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken"
 # imageCreation(toTranslate)
 # wikiMarkdownCreation(numpadString)
-# wikiMarkdownCreation(capcomString)
-# wikiMarkdownCreation("st.hk, st.lk > shoryuken > big big brongus > donkey kick")
-# wikiMarkdownCreation("st.hk, st.lk > big big brongus")
-wikiMarkdownCreation("st.hK, st.Lk > 236lp > lightning legs > qcf+hp")
-# wikiMarkdownCreation("st.mp, cr.hp > tatsu > donkey kick")
+wikiMarkdownCreation(capcomString)
+# wikiMarkdownCreation("LP, LK xx MK Tatsu")
+# wikiMarkdownCreation("LP, LK xx Shoryuken")
+# wikiMarkdownCreation("LP, LK xx Tatsumaki Senpukyaku")
+# wikiMarkdownCreation("LP, LK xx Tatsumaki Senpukyaku, HP > Hadoken")
+# wikiMarkdownCreation("2LK, LP xx MK Tatsu, Shoryuken")
