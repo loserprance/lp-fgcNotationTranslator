@@ -157,7 +157,7 @@ notation = {
     }
 }
 
-def wikiMarkdownCreation(input):
+def parseInput(input):
     moveDict = {}
     resultArr = []          # list of moves to combine into string once text processing has finished
 
@@ -252,12 +252,15 @@ def wikiMarkdownCreation(input):
 
         return(moveDict)
 
-    moveDict = trimDict(customPhraseNum)
+
+    if (cmi != {}):
+        moveDict = trimDict(customPhraseNum)
 
     # fix indexes/more moredict info pop?
-    for i in range(len(moveDict)):
-        if (moveDict[i] == "toDel"):
-            del (moveDict[i])
+    # for i in range(len(moveDict)):
+#
+        # if (moveDict[i] == "toDel"):
+            # del (moveDict[i])
 
     for i in moveDict:
         move = moveDict[i]["move"]
@@ -599,12 +602,13 @@ def moveTranslation(m, mt):
             return({"directions": directions, "btn": btn, "numOfHits": numOfHits})
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
-capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken"
+capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk"
+# parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
-# wikiMarkdownCreation(numpadString)
-wikiMarkdownCreation(capcomString)
-# wikiMarkdownCreation("LP, LK xx MK Tatsu")
-# wikiMarkdownCreation("LP, LK xx Shoryuken")
-# wikiMarkdownCreation("LP, LK xx Tatsumaki Senpukyaku")
-# wikiMarkdownCreation("LP, LK xx Tatsumaki Senpukyaku, HP > Hadoken")
-# wikiMarkdownCreation("2LK, LP xx MK Tatsu, Shoryuken")
+# parseInput(numpadString)
+parseInput(capcomString)
+# parseInput("LP, LK xx MK Tatsu")
+# parseInput("LP, LK xx Shoryuken")
+# parseInput("LP, LK xx Tatsumaki Senpukyaku")
+# parseInput("LP, LK xx Tatsumaki Senpukyaku, HP > Hadoken")
+# parseInput("2LK, LP xx MK Tatsu, Shoryuken")
