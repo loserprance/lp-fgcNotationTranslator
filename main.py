@@ -657,12 +657,8 @@ def parseInput(input):
                     moveDict[i]["input"]["directions"]["release"]["dirStates"].append(notation["directions"][n]["state"])
                     moveDict[i]["input"]["directions"]["release"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
 
-    # for i in moveDict:
-        # move = moveDict[i]
-        # print(f"{i}: {move}")
-    print(moveDict)
-
     for i in moveDict:
+        moveDictEntry = moveDict[i]
         move = moveDict[i]["move"]
         currentMoveType = moveDict[i]["moveType"]
         try:
@@ -679,8 +675,8 @@ def parseInput(input):
             for customKey in customTranslations:
                 if (customKey.lower() == move.lower()):
                     if (customTranslations[customKey]["moveType"] == "motion"):
-                        motionNum = moveTranslation(customKey, currentMoveType)["motionNum"]
-                        btn = moveTranslation(customKey, currentMoveType)["btn"].lower()
+                        motionNum = customTranslations[move]["input"]["numpadInput"]
+                        btn = customTranslations[move]["input"]["strength"] + customTranslations[move]["input"]["attack"].lower()
 
                         if (btn[0] == "*"):
                             btn = btn[1]
@@ -693,7 +689,7 @@ def parseInput(input):
                         print("not appending custom move to resultArr, functionality not implemented yet")
 
         elif (currentMoveType == "button"):
-            validDirections = moveTranslation(move, currentMoveType)["directions"]
+            validDirections = moveDictEntry["input"]["directions"]["dirNums"]
 
             if isinstance(validDirections, list):
                 if (validDirections == ["1", "2", "3"]):
@@ -703,8 +699,8 @@ def parseInput(input):
             else:
                 direction = str(validDirections)
 
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
-            numOfHits = moveTranslation(move, currentMoveType)["numOfHits"]
+            btn = moveDictEntry["input"]["button"]["shortform"].lower()
+            numOfHits = moveDictEntry["input"]["numOfHits"]
 
             dirAbv = notation["directions"][direction]["abbreviation"]
 
@@ -717,16 +713,16 @@ def parseInput(input):
                 resultArr.append(f"[[File:{btn}.png]] ({numOfHits}) ")
 
         elif (currentMoveType == "motion"):
-            motionNum = moveTranslation(move, currentMoveType)["motionNum"]
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
+            motionNum = moveDictEntry["input"]["motions"]["num"]
+            btn = moveDictEntry["input"]["button"]["shortform"].lower()
 
             motionAbv = notation["motions"][motionNum]["abbreviation"]
 
             resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
         elif (currentMoveType == "charge"):
-            hold = moveTranslation(move, currentMoveType)["hold"]
-            release = moveTranslation(move, currentMoveType)["release"]
-            btn = moveTranslation(move, currentMoveType)["btn"].lower()
+            hold = moveDictEntry["input"]["directions"]["hold"]["dirNums"][0]
+            release = moveDictEntry["input"]["directions"]["release"]["dirNums"][0]
+            btn = moveDictEntry["input"]["button"]["shortform"].lower()
 
             if (hold.isdigit()):
                 holdAbv = notation["directions"][hold]["abbreviation"]
@@ -752,123 +748,20 @@ def parseInput(input):
         finalResult += move
         # print(move)
 
-    print("--")
-    for i in moveDict:
-        move = moveDict[i]
-        moveType = moveDict[i]["moveType"]
-        print(f"{i}: {move}")
+    # print("--")
+    # for i in moveDict:
+        # move = moveDict[i]
+        # moveType = moveDict[i]["moveType"]
+        # print(f"{i}: {move}")
 
     print("--")
     print(finalResult)
     print("----\n")
 
-def moveTranslation(m, mt):
-    # moves of any language will return numpad here
-    move = m
-    moveType = mt
-
-    notationType = parseMoveNotation(move)
-
-    if (mt == "custom"):
-        # print(customTranslations[move])
-        # print("CUSTOM IN MOVE TRANSLATION!")
-
-        numpadInput = customTranslations[m]["input"]["numpadInput"]
-        strength = customTranslations[m]["input"]["strength"]
-        attack = customTranslations[m]["input"]["attack"][0]
-
-        moveType = customTranslations[m]["moveType"]
-        notationType = "numpad"
-
-        move = str(numpadInput) + str(strength) + str(attack)
-
-    if (notationType == "numpad"):
-
-        if (moveType == "charge"):
-            lbi = move.index("[")+1
-            rbi = move.index("]")
-
-            hold = move[lbi:rbi]
-            release = move[rbi+1:rbi+2]
-            btn = move[4] + move[5]
-
-            return({"hold": hold, "release": release, "btn": btn})
-        elif (moveType == "motion"):
-            if (len(move) != 3 and int(move[0:2]) > 9):
-                attackStrengths = ["L", "M", "H", "*", "EX", "l", "m", "h", "eX", "Ex", "ex"]
-                for element in attackStrengths:
-                    if (move.partition(element)[2] != ""):
-                        motionNum = move.partition(element)[0]
-                        btn = move.partition(element)[1].upper() + move.partition(element)[2].upper()
-
-                        return({"motionNum": motionNum, "btn": btn})
-        elif (moveType == "button"):
-            direction = move[0]
-            btn = move[1]+move[2]
-            if (("(" in move or ")" in move)):
-                numOfHits = move[4]
-            else:
-                numOfHits = 0
-
-            return({"directions": direction, "btn": btn, "numOfHits": numOfHits})
-    elif (notationType == "capcom"):
-
-        def findBtn():
-            for btnKey in notation["buttons"]["sf"]:
-                btnLength = len(btnKey)
-                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
-                if (btnKey.lower() == move[-btnLength:].lower()):
-                    return(btnKey)
-
-        if (moveType == "charge"):
-
-            lbi = move.index("[")+1
-            rbi = move.index("]")
-
-            hold = move[lbi:rbi]
-            release = move[rbi+1:rbi+2]
-
-            btn = findBtn()
-
-            return({"hold": hold, "release": release, "btn": btn})
-        elif (moveType == "motion"):
-            for motionKey in notation["motions"]:
-                # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
-                if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
-                    motionNum = motionKey
-
-            btn = findBtn()
-
-            return({"motionNum": motionNum, "btn": btn})
-        elif (moveType == "button"):
-
-            if (len(move) == 2):
-                directions = 5
-               
-            if ("(" in move or ")" in move):
-                numOfHits = move[move.index("(")+1:move.index(")")]
-                lpi = [i for i, c in enumerate(move) if c == "("]
-                rpi = [i for i, c in enumerate(move) if c == ")"]
-                move = move[0:lpi[0]]
-            else:
-                numOfHits = 0
-
-            btn = findBtn()
-
-            if ("." in move):
-                dotIndex = move.index(".")
-                directionStateAbv = ""
-                directions = []
-                for key in notation["directions"]:
-                    if (notation["directions"][key]["stateAbv"] == move[0:dotIndex+1]):
-                        directions.append(key)
-
-            return({"directions": directions, "btn": btn, "numOfHits": numOfHits})
-
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
 # capcomString = "cr.hp(1) > qcf+lk, cr.lp > Spinning Bird Kick"
-# parseInput("cr.hp(1) > qcf+lk, cr.lp > shoryu")
+parseInput("cr.hp(1) > qcf+lk, cr.lp > shoryu")
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
-parseInput(numpadString)
+# parseInput(numpadString)
 # parseInput(capcomString)
