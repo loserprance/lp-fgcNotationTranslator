@@ -8,9 +8,9 @@ import sys
 # less lists, more dicts?
 
 # create a tool that turns fighting game notation of all languages (numpad notation, "capcom", etc.) into
-	# images from icons with the use of PIL
-	# markdown useful for srk wiki
-	# useful for FAT in some way?
+# images from icons with the use of PIL
+# markdown useful for srk wiki
+# useful for FAT in some way?
 
 # different "languages" of fg notation exist...capcom (jab,short,fierce), numpad, snk?
 # numpad notation is used as a base for directions and motions
@@ -157,9 +157,146 @@ notation = {
     }
 }
 
+# custom user defined moves; special moves, unique attacks, game-specific information...
+# dicts of movelists from specific fighting games could be added (sfv)
+customTranslations = {
+    "Shoryuken": {
+        "input" : {
+            "numpadInput" : "623",
+            "strength" : "*",
+            "attack" : "Punch"
+        },
+        "moveType" : "motion",
+        "aliases" : ["dp", "shoryu"]
+    },
+    "Tatsumaki Senpukyaku": {
+        "input" : {
+            "numpadInput" : "214",
+            "strength" : "*",
+            "attack" : "Kick"
+        },
+        "moveType" : "motion",
+        "aliases" : ["tatsu", "hurricane"]
+    },
+    "Spinning Bird Kick": {
+        "input" : {
+            "numpadInput" : "[2]8",
+            "strength" : "*",
+            "attack" : "Kick"
+        },
+        "moveType" : "charge",
+        "aliases" : ["sbk"]
+    },
+    "Lightning Legs": {
+        "input" : {
+            "numpadInput" : "236",
+            "strength" : "*",
+            "attack" : "Kick"
+        },
+        "moveType" : "motion",
+        "aliases" : ["legs", "hyak"]
+    },
+    "Donkey Kick": {
+        "input" : {
+            "numpadInput" : "41236",
+            "strength" : "*",
+            "attack" : "Kick"
+        },
+        "moveType" : "motion",
+        "aliases" : ["dk"]
+    },
+    "Hadoken": {
+        "input" : {
+            "numpadInput" : "236",
+            "strength" : "*",
+            "attack" : "Punch"
+        },
+        "moveType" : "motion",
+        "aliases" : ["fireball", "fb", "hadouken"]
+    },
+    "big big brongus": {
+        "input" : {
+            "numpadInput" : "236",
+            "strength" : "*",
+            "attack" : "Punch"
+        },
+        "moveType" : "motion",
+        "aliases" : ["fireball", "fb", "hadouken"]
+    }
+}
+
+def syntaxChecking(string):
+    if ("(" in string or ")" in string):
+        lpi = [i for i, c in enumerate(string) if c == "("]
+        rpi = [i for i, c in enumerate(string) if c == ")"]
+        if (len(lpi) != len(rpi)):
+            print("Syntax error; uneven amount of parentheses in string \"" + string + "\", exiting")
+            # exception later/if necessary
+            sys.exit(1)
+    if ("[" in string or "]" in string):
+        lbi = [i for i, c in enumerate(string) if c == "["]
+        rbi = [i for i, c in enumerate(string) if c == "]"]
+        if (len(lbi) != len(rbi)):
+            print("Syntax error; uneven amount of brackets in string \"" + string + "\", exiting")
+            # exception later/if necessary
+            sys.exit(1)
+
+def parseMoveNotation(move):
+    if (move == "xx" or move == ">"):
+        return("cancel")
+    elif (move == ","):
+        return("link")
+
+    if (move[0].isdigit() or move[1].isdigit()):
+        return("numpad")
+    else:
+        return("capcom")
+
+def parseMoveType(move):
+    if (move == None):
+        return
+    elif (move == "xx" or move == ">"):
+        return("cancel")
+    elif (move == ","):
+        return("link")
+
+    moveNotation = parseMoveNotation(move)
+
+    # if there are brackets in this move, this is a charge move ("[2]8LK... or [d]u+lk?")
+    if (("[" in move or "]" in move)):
+        return("charge")
+    else:
+        if (moveNotation == "numpad"):
+            try:
+                # else, if we're in numpad notation and the second character of this move is a number, this is a motion (ie. 236HP)
+                if ((move[1]).isdigit()):
+                    return("motion")
+            except:
+                pass
+            else:
+                # else, it's numpad notation for a direction + a button (ie. 2MK)
+                return("button")
+        elif (moveNotation == "capcom"):
+            for motionKey in notation["motions"]:
+                # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
+                if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
+                    return("motion")
+
+            for btnKey in notation["buttons"]["sf"]:
+                if ("(" in move or ")" in move):
+                    lpi = [i for i, c in enumerate(move) if c == "("]
+                    move = move[0:lpi[0]]
+
+                btnLength = len(btnKey)
+                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
+                if (btnKey.lower() == move[-btnLength:].lower()):
+                    return("button")
+
+    return("custom?")
+
 def parseInput(input):
-    moveDict = {}
-    resultArr = []          # list of moves to combine into string once text processing has finished
+    moveDict = {}  # dict of input split move by move with all relevant information stored
+    resultArr = [] # list of moves to combine into string once text processing has finished
 
     print("Input: " + str(input) + "\n----")
     syntaxChecking(input)
@@ -171,11 +308,10 @@ def parseInput(input):
         moveDict[i] = {}
         moveDict[i]["move"] = move
         moveDict[i]["moveType"] = parseMoveType(move)
-
-        if (move == "xx" or move == ">"):
-            moveDict[i]["cancelType"] = "cancel"
-        elif (move == ","):
-            moveDict[i]["cancelType"] = "link"
+        if (moveDict[i]["moveType"] == "custom?" or moveDict[i]["moveType"] == "custom"):
+            moveDict[i]["moveNotation"] = "custom"
+        else:
+            moveDict[i]["moveNotation"] = parseMoveNotation(move)
 
     # if there are any custom move definitions that need to be turned into notation,
     # their indexes in moveDict (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
@@ -257,10 +393,274 @@ def parseInput(input):
         moveDict = trimDict(customPhraseNum)
 
     # fix indexes/more moredict info pop?
-    # for i in range(len(moveDict)):
-#
-        # if (moveDict[i] == "toDel"):
-            # del (moveDict[i])
+    for i in range(len(moveDict)):
+        if (moveDict[i] == "toDel"):
+            del (moveDict[i])
+
+    print("--")
+    for i in moveDict:
+        move = moveDict[i]["move"]
+        moveType = moveDict[i]["moveType"]
+        moveNotation = moveDict[i]["moveNotation"]
+        moveDict[i]["input"] = {}
+
+        if (moveNotation == "numpad"):
+            if (moveType == "charge"):
+                lbi = move.index("[")+1
+                rbi = move.index("]")
+
+                hold = move[lbi:rbi]
+                holdDirections = []
+                for numpadDirection in notation["directions"]:
+                    if (hold == numpadDirection):
+                        holdDirections.append(numpadDirection)
+                        # state = notation["directions"][numpadDirection]["state"]
+                        # for numpadDirection2 in notation["directions"]:
+                            # if (state == notation["directions"][numpadDirection2]["state"]):
+                                # holdDirections.append(numpadDirection2)
+
+                release = move[rbi+1:rbi+2]
+                releaseDirections = []
+                for numpadDirection3 in notation["directions"]:
+                    if (release == numpadDirection3):
+                        releaseDirections.append(numpadDirection3)
+                        # state = notation["directions"][numpadDirection3]["state"]
+                        # for numpadDirection4 in notation["directions"]:
+                            # if (state == notation["directions"][numpadDirection4]["state"]):
+                                # releaseDirections.append(numpadDirection4)
+
+                moveDict[i]["input"]["directions"] = {}
+                moveDict[i]["input"]["directions"]["hold"] = {}
+                moveDict[i]["input"]["directions"]["hold"]["dirNums"] = holdDirections
+                moveDict[i]["input"]["directions"]["hold"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirStateAbvs"] = []
+
+                for n in holdDirections:
+                    moveDict[i]["input"]["directions"]["hold"]["dirAbvs"].append(notation["directions"][n]["abbreviation"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirWords"].append(notation["directions"][n]["full"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirStates"].append(notation["directions"][n]["state"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
+
+                moveDict[i]["input"]["directions"]["release"] = {}
+                moveDict[i]["input"]["directions"]["release"]["dirNums"] = releaseDirections
+                moveDict[i]["input"]["directions"]["release"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirStateAbvs"] = []
+
+                for n in releaseDirections:
+                    moveDict[i]["input"]["directions"]["release"]["dirAbvs"].append(notation["directions"][n]["abbreviation"])
+                    moveDict[i]["input"]["directions"]["release"]["dirWords"].append(notation["directions"][n]["full"])
+                    moveDict[i]["input"]["directions"]["release"]["dirStates"].append(notation["directions"][n]["state"])
+                    moveDict[i]["input"]["directions"]["release"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
+
+                btn = move[4] + move[5]
+                moveDict[i]["input"]["button"] = {}
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+
+            elif (moveType == "motion"):
+                if (len(move) != 3 and int(move[0:2]) > 9):
+                    attackStrengths = ["L", "M", "H", "*", "EX", "l", "m", "h", "eX", "Ex", "ex"]
+                    for element in attackStrengths:
+                        if (move.partition(element)[2] != ""):
+                            motionNum = move.partition(element)[0]
+                            moveDict[i]["input"]["motions"] = {}
+                            moveDict[i]["input"]["motions"]["num"] = motionNum
+                            moveDict[i]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
+                            moveDict[i]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+
+                            btn = move.partition(element)[1].upper() + move.partition(element)[2].upper()
+                            moveDict[i]["input"]["button"] = {}
+                            moveDict[i]["input"]["button"]["shortform"] = btn
+                            moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                            moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                            moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                            moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                            moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                            moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+
+            elif (moveType == "button"):
+                if (("(" in move or ")" in move)):
+                    numOfHits = move[4]
+                else:
+                    numOfHits = 0
+
+                direction = move[0]
+                moveDict[i]["input"]["directions"] = {}
+                moveDict[i]["input"]["directions"]["dirNums"] = [direction]
+                moveDict[i]["input"]["directions"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["dirStateAbvs"] = []
+
+                moveDict[i]["input"]["directions"]["dirAbvs"].append(notation["directions"][direction]["abbreviation"])
+                moveDict[i]["input"]["directions"]["dirWords"].append(notation["directions"][direction]["full"])
+                moveDict[i]["input"]["directions"]["dirStates"].append(notation["directions"][direction]["state"])
+                moveDict[i]["input"]["directions"]["dirStateAbvs"].append(notation["directions"][direction]["stateAbv"])
+
+                btn = move[1]+move[2]
+                moveDict[i]["input"]["button"] = {}
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+                moveDict[i]["input"]["numOfHits"] = numOfHits
+
+        elif (moveNotation == "capcom"):
+            def findBtn(move):
+                for btnKey in notation["buttons"]["sf"]:
+                    btnLength = len(btnKey)
+                    # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
+                    if (btnKey.lower() == move[-btnLength:].lower()):
+                        return(btnKey)
+
+            if (moveType == "button"):
+                # directions = btn = numOfHits = ""
+                if (len(move) == 2):
+                    directions = 5
+
+                if ("(" in move or ")" in move):
+                    numOfHits = move[move.index("(")+1:move.index(")")]
+                    lpi = [i for i, c in enumerate(move) if c == "("]
+                    rpi = [i for i, c in enumerate(move) if c == ")"]
+                    move = move[0:lpi[0]]
+                else:
+                    numOfHits = 0
+                moveDict[i]["input"]["button"] = {}
+                btn = findBtn(move)
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+
+                moveDict[i]["input"]["directions"] = {}
+                if ("." in move):
+                    dotIndex = move.index(".")
+                    directionStateAbv = ""
+                    directions = []
+                    for key in notation["directions"]:
+                        if (notation["directions"][key]["stateAbv"] == move[0:dotIndex+1]):
+                            directions.append(key)
+                    if (directions == ["1", "2", "3"]):
+                        directions = ["2"]
+                else:
+                    print("failed to parse button with no period")
+
+                moveDict[i]["input"]["directions"]["dirNums"] = directions
+                moveDict[i]["input"]["directions"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["dirStateAbvs"] = []
+
+                for n in directions:
+                    moveDict[i]["input"]["directions"]["dirAbvs"].append(notation["directions"][n]["abbreviation"])
+                    moveDict[i]["input"]["directions"]["dirWords"].append(notation["directions"][n]["full"])
+                    moveDict[i]["input"]["directions"]["dirStates"].append(notation["directions"][n]["state"])
+                    moveDict[i]["input"]["directions"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
+
+                moveDict[i]["input"]["numOfHits"] = numOfHits
+
+            if (moveType == "motion"):
+                moveDict[i]["input"]["button"] = {}
+                btn = findBtn(move)
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+
+                moveDict[i]["input"]["motions"] = {}
+                for motionKey in notation["motions"]:
+                    # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
+                    if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
+                        motionNum = motionKey
+
+                moveDict[i]["input"]["motions"]["num"] = motionNum
+                moveDict[i]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
+                moveDict[i]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+
+            if (moveType == "charge"):
+                moveDict[i]["input"]["button"] = {}
+                btn = findBtn(move)
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
+
+                lbi = move.index("[")+1
+                rbi = move.index("]")
+
+                hold = move[lbi:rbi]
+                release = move[rbi+1:rbi+2]
+                holdDirections = []
+                releaseDirections = []
+
+                for numpadDirection in notation["directions"]:
+                    if (hold.lower() == notation["directions"][numpadDirection]["abbreviation"].lower()):
+                        holdDirections.append(numpadDirection)
+                        # state = notation["directions"][numpadDirection]["state"]
+                        # for numpadDirection2 in notation["directions"]:
+                            # if (state == notation["directions"][numpadDirection2]["state"]):
+                                # holdDirections.append(numpadDirection2)
+
+                for numpadDirection3 in notation["directions"]:
+                    if (release.lower() == notation["directions"][numpadDirection3]["abbreviation"].lower()):
+                        releaseDirections.append(numpadDirection3)
+                        # state = notation["directions"][numpadDirection3]["state"]
+                        # for numpadDirection4 in notation["directions"]:
+                            # if (state == notation["directions"][numpadDirection4]["state"]):
+                                # releaseDirections.append(numpadDirection4)
+
+                moveDict[i]["input"]["directions"] = {}
+                moveDict[i]["input"]["directions"]["hold"] = {}
+                moveDict[i]["input"]["directions"]["hold"]["dirNums"] = holdDirections
+                moveDict[i]["input"]["directions"]["hold"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["hold"]["dirStateAbvs"] = []
+
+                for n in holdDirections:
+                    moveDict[i]["input"]["directions"]["hold"]["dirAbvs"].append(notation["directions"][n]["abbreviation"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirWords"].append(notation["directions"][n]["full"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirStates"].append(notation["directions"][n]["state"])
+                    moveDict[i]["input"]["directions"]["hold"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
+
+                moveDict[i]["input"]["directions"]["release"] = {}
+                moveDict[i]["input"]["directions"]["release"]["dirNums"] = releaseDirections
+                moveDict[i]["input"]["directions"]["release"]["dirAbvs"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirWords"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirStates"] = []
+                moveDict[i]["input"]["directions"]["release"]["dirStateAbvs"] = []
+
+                for n in releaseDirections:
+                    moveDict[i]["input"]["directions"]["release"]["dirAbvs"].append(notation["directions"][n]["abbreviation"])
+                    moveDict[i]["input"]["directions"]["release"]["dirWords"].append(notation["directions"][n]["full"])
+                    moveDict[i]["input"]["directions"]["release"]["dirStates"].append(notation["directions"][n]["state"])
+                    moveDict[i]["input"]["directions"]["release"]["dirStateAbvs"].append(notation["directions"][n]["stateAbv"])
+
+    # for i in moveDict:
+        # move = moveDict[i]
+        # print(f"{i}: {move}")
+    print(moveDict)
 
     for i in moveDict:
         move = moveDict[i]["move"]
@@ -289,6 +689,8 @@ def parseInput(input):
 
                         motionAbv = notation["motions"][motionNum]["abbreviation"]
                         resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
+                    else:
+                        print("not appending custom move to resultArr, functionality not implemented yet")
 
         elif (currentMoveType == "button"):
             validDirections = moveTranslation(move, currentMoveType)["directions"]
@@ -360,150 +762,12 @@ def parseInput(input):
     print(finalResult)
     print("----\n")
 
-def syntaxChecking(string):
-    if ("(" in string or ")" in string):
-        lpi = [i for i, c in enumerate(string) if c == "("]
-        rpi = [i for i, c in enumerate(string) if c == ")"]
-        if (len(lpi) != len(rpi)):
-            print("Syntax error; uneven amount of parentheses in string \"" + string + "\", exiting")
-            # exception later/if necessary
-            sys.exit(1)
-    if ("[" in string or "]" in string):
-        lbi = [i for i, c in enumerate(string) if c == "["]
-        rbi = [i for i, c in enumerate(string) if c == "]"]
-        if (len(lbi) != len(rbi)):
-            print("Syntax error; uneven amount of brackets in string \"" + string + "\", exiting")
-            # exception later/if necessary
-            sys.exit(1)
-
-def whichNotation(move):
-    if (move == ">" or move == "xx" or move == ","):
-        return
-   
-    if (move[0].isdigit() or move[1].isdigit()):
-        # print(f"Assuming move {move} is in numpad notation")
-        return("numpad")
-    else:
-        # print(f"Assuming move {move} is not in numpad notation")
-        return("capcom")
-
-def parseMoveType(move):
-
-    if (move == None):
-        return
-    if (move == ">"):
-        return(">")
-    elif (move == "xx"):
-        return("xx")
-    elif (move == ","):
-        return(",")
-
-    moveNotation = whichNotation(move)
-
-    # if there are brackets in this move, this is a charge move ("[2]8LK... or [d]u+lk?")
-    if (("[" in move or "]" in move)):
-        return("charge")
-    else:
-        if (moveNotation == "numpad"):
-            try:
-                # else, if we're in numpad notation and the second character of this move is a number, this is a motion (ie. 236HP)
-                if ((move[1]).isdigit()):
-                    return("motion")
-            except:
-                pass
-            else:
-                # else, it's numpad notation for a direction + a button (ie. 2MK)
-                return("button")
-        elif (moveNotation == "capcom"):
-            for motionKey in notation["motions"]:
-                # if the first letters of the move match up to a possible motion written in capcom, this is a motion (ie. qcf+lk)
-                if (notation["motions"][motionKey]["abbreviation"] == move[0:len(notation["motions"][motionKey]["abbreviation"])]):
-                    return("motion")
-
-            for btnKey in notation["buttons"]["sf"]:
-                if ("(" in move or ")" in move):
-                    lpi = [i for i, c in enumerate(move) if c == "("]
-                    move = move[0:lpi[0]]
-
-                btnLength = len(btnKey)
-                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
-                if (btnKey.lower() == move[-btnLength:].lower()):
-                    return("button")
-
-    return("custom?")
-
-customTranslations = {
-    "Shoryuken": {
-        "input" : {
-            "numpadInput" : "623",
-            "strength" : "*",
-            "attack" : "Punch"
-        },
-        "moveType" : "motion",
-        "aliases" : ["dp", "shoryu"]
-    },
-    "Tatsumaki Senpukyaku": {
-        "input" : {
-            "numpadInput" : "214",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "motion",
-        "aliases" : ["tatsu", "hurricane"]
-    },
-    "Spinning Bird Kick": {
-        "input" : {
-            "numpadInput" : "[2]8",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "charge",
-        "aliases" : ["sbk"]
-    },
-    "Lightning Legs": {
-        "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "motion",
-        "aliases" : ["legs", "hyak"]
-    },
-    "Donkey Kick": {
-        "input" : {
-            "numpadInput" : "41236",
-            "strength" : "*",
-            "attack" : "Kick"
-        },
-        "moveType" : "motion",
-        "aliases" : ["dk"]
-    },
-    "Hadoken": {
-        "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Punch"
-        },
-        "moveType" : "motion",
-        "aliases" : ["fireball", "fb", "hadouken"]
-    },
-    "big big brongus": {
-        "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Punch"
-        },
-        "moveType" : "motion",
-        "aliases" : ["fireball", "fb", "hadouken"]
-    }
-}
-
 def moveTranslation(m, mt):
     # moves of any language will return numpad here
     move = m
     moveType = mt
 
-    notationType = whichNotation(move)
+    notationType = parseMoveNotation(move)
 
     if (mt == "custom"):
         # print(customTranslations[move])
@@ -602,13 +866,9 @@ def moveTranslation(m, mt):
             return({"directions": directions, "btn": btn, "numOfHits": numOfHits})
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
-capcomString = "cr.hp(1) > qcf+lk, cr.lp > [d]u+lk"
+# capcomString = "cr.hp(1) > qcf+lk, cr.lp > Spinning Bird Kick"
+# parseInput("cr.hp(1) > qcf+lk, cr.lp > shoryu")
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
-# parseInput(numpadString)
-parseInput(capcomString)
-# parseInput("LP, LK xx MK Tatsu")
-# parseInput("LP, LK xx Shoryuken")
-# parseInput("LP, LK xx Tatsumaki Senpukyaku")
-# parseInput("LP, LK xx Tatsumaki Senpukyaku, HP > Hadoken")
-# parseInput("2LK, LP xx MK Tatsu, Shoryuken")
+parseInput(numpadString)
+# parseInput(capcomString)

@@ -1,0 +1,2 @@
+numpad notation moves like [2]8LK and 236LK might also be formatted as [2]8+LK for example; instead of banking on indexes of button strength/attack types ("L" and "K") always being the same,
+instead take the last two characters 
