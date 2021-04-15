@@ -4,13 +4,6 @@ import sys
 
 # NEXT STEPS AND GOALS:
 # reimplement image function/incorporate into wiki function
-# change wikitext into an array, then when the entire process is done build wiki markdown/image from array instructions
-# less lists, more dicts?
-
-# create a tool that turns fighting game notation of all languages (numpad notation, "capcom", etc.) into
-# images from icons with the use of PIL
-# markdown useful for srk wiki
-# useful for FAT in some way?
 
 # different "languages" of fg notation exist...capcom (jab,short,fierce), numpad, snk?
 # numpad notation is used as a base for directions and motions
@@ -316,7 +309,7 @@ def parseInput(input):
     # if there are any custom move definitions that need to be turned into notation,
     # their indexes in moveDict (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
     cmi = {}
-    customPhraseNum = 1     # used for following variable "cmi". goes up when the next word being inspected in moveDict is not a custom word, so we know when to start categorizing the next custom move
+    customPhraseNum = -1     # used for following variable "cmi". goes up when the next word being inspected in moveDict is not a custom word, so we know when to start categorizing the next custom move
     # if there are multiple moves with moveType "custom?" occuring in moveDict sequentially, they must be referencing one move with multiple words (ie. "lightning legs")
     # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
     customStreak = False
@@ -325,7 +318,7 @@ def parseInput(input):
     for i in moveDict:
         move = moveDict[i]
         moveType = moveDict[i]["moveType"]
-        print(f"{i}: {move}")
+        # print(f"{i}: {move}")
 
         if (moveType == "custom?"):
             if customStreak:
@@ -397,12 +390,57 @@ def parseInput(input):
         if (moveDict[i] == "toDel"):
             del (moveDict[i])
 
-    print("--")
     for i in moveDict:
+        def findBtn(m):
+            move = m
+
+            if (move[-2] == "*"):
+                return(move[-2:])
+
+            for btnKey in notation["buttons"]["sf"]:
+                btnLength = len(btnKey)
+                # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
+                if (btnKey.lower() == move[-btnLength:].lower()):
+                    return(btnKey)
+
         move = moveDict[i]["move"]
         moveType = moveDict[i]["moveType"]
         moveNotation = moveDict[i]["moveNotation"]
         moveDict[i]["input"] = {}
+
+        # can be changed to look more like non-custom dicts
+        if (moveNotation == "custom"):
+            m = move
+            move = str(customTranslations[m]["input"]["numpadInput"]) + customTranslations[m]["input"]["strength"][0] + customTranslations[m]["input"]["attack"][0]
+            # moveDict[i]["input"] = customTranslations[move]["input"]
+            customMoveType = customTranslations[m]["moveType"]
+            moveDict[i]["moveType"] = customMoveType
+
+            if (customMoveType == "motion"):
+                attackStrengths = ["L", "M", "H", "*", "EX", "l", "m", "h", "eX", "Ex", "ex"]
+                for element in attackStrengths:
+                    if (move.partition(element)[2] != ""):
+                        motionNum = move.partition(element)[0]
+                        moveDict[i]["input"]["motions"] = {}
+                        moveDict[i]["input"]["motions"]["num"] = motionNum
+                        moveDict[i]["input"]["motions"]["abv"] = notation["motions"][motionNum]["abbreviation"]
+                        moveDict[i]["input"]["motions"]["word"] = notation["motions"][motionNum]["full"]
+
+                moveDict[i]["input"]["button"] = {}
+                btn = findBtn(move)
+                moveDict[i]["input"]["button"]["shortform"] = btn
+                if (btn[0] == "*"):
+                    moveDict[i]["input"]["button"]["strWord"] = "Any"
+                    moveDict[i]["input"]["button"]["attWord"] = customTranslations[m]["input"]["attack"]
+                else:
+                    moveDict[i]["input"]["button"]["strWord"] = notation["buttons"]["sf"][btn]["strength"]
+                    moveDict[i]["input"]["button"]["attWord"] = notation["buttons"]["sf"][btn]["attack"]
+                moveDict[i]["input"]["button"]["strAbv"] = btn[0]
+                moveDict[i]["input"]["button"]["attAbv"] = btn[1]
+                moveDict[i]["input"]["button"]["fullWords"] = moveDict[i]["input"]["button"]["strWord"] + " " + moveDict[i]["input"]["button"]["attWord"]
+                moveDict[i]["input"]["button"]["attBoomer"] = None
+            else:
+                print("not adding additional data to moveDict for custom, functionality not implemented yet")
 
         if (moveNotation == "numpad"):
             if (moveType == "charge"):
@@ -518,18 +556,8 @@ def parseInput(input):
                 moveDict[i]["input"]["numOfHits"] = numOfHits
 
         elif (moveNotation == "capcom"):
-            def findBtn(move):
-                for btnKey in notation["buttons"]["sf"]:
-                    btnLength = len(btnKey)
-                    # if the last letters of the move match up to a possible button written in capcom, this is a button (ie. cr.mk)
-                    if (btnKey.lower() == move[-btnLength:].lower()):
-                        return(btnKey)
 
             if (moveType == "button"):
-                # directions = btn = numOfHits = ""
-                if (len(move) == 2):
-                    directions = 5
-
                 if ("(" in move or ")" in move):
                     numOfHits = move[move.index("(")+1:move.index(")")]
                     lpi = [i for i, c in enumerate(move) if c == "("]
@@ -548,7 +576,9 @@ def parseInput(input):
                 moveDict[i]["input"]["button"]["attBoomer"] = notation["buttons"]["sf"][btn]["boomer"]
 
                 moveDict[i]["input"]["directions"] = {}
-                if ("." in move):
+                if (len(move) == 2):
+                    directions = ["5"]
+                elif ("." in move):
                     dotIndex = move.index(".")
                     directionStateAbv = ""
                     directions = []
@@ -668,26 +698,6 @@ def parseInput(input):
 
         if (currentMoveType == None):
             pass
-        elif (currentMoveType == "custom"):
-            # todo/ideas:
-            # if movename contains light, medium, heavy...
-            # compare element in moveDict to alias
-            for customKey in customTranslations:
-                if (customKey.lower() == move.lower()):
-                    if (customTranslations[customKey]["moveType"] == "motion"):
-                        motionNum = customTranslations[move]["input"]["numpadInput"]
-                        btn = customTranslations[move]["input"]["strength"] + customTranslations[move]["input"]["attack"].lower()
-
-                        if (btn[0] == "*"):
-                            btn = btn[1]
-                            # del (resultArr[-1])
-                            # btn = moveArr[moveArrCurrentIndex-1].lower()
-
-                        motionAbv = notation["motions"][motionNum]["abbreviation"]
-                        resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
-                    else:
-                        print("not appending custom move to resultArr, functionality not implemented yet")
-
         elif (currentMoveType == "button"):
             validDirections = moveDictEntry["input"]["directions"]["dirNums"]
 
@@ -714,11 +724,22 @@ def parseInput(input):
 
         elif (currentMoveType == "motion"):
             motionNum = moveDictEntry["input"]["motions"]["num"]
-            btn = moveDictEntry["input"]["button"]["shortform"].lower()
-
             motionAbv = notation["motions"][motionNum]["abbreviation"]
+            btn = moveDictEntry["input"]["button"]["shortform"].lower()
+            isPreviousElementBtn = False
+            newBtn = ""
 
-            resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
+            if (btn[0] == "*"):
+                for key in notation["buttons"]["sf"]:
+                    if key.lower() in resultArr[-1]:
+                        isPreviousElementBtn = True
+                        newBtn = (resultArr[-1])[7:9]
+                        del resultArr[-1]
+
+            if (isPreviousElementBtn):
+                resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{newBtn}.png]] ")
+            else:
+                resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
         elif (currentMoveType == "charge"):
             hold = moveDictEntry["input"]["directions"]["hold"]["dirNums"][0]
             release = moveDictEntry["input"]["directions"]["release"]["dirNums"][0]
@@ -749,10 +770,10 @@ def parseInput(input):
         # print(move)
 
     # print("--")
-    # for i in moveDict:
-        # move = moveDict[i]
-        # moveType = moveDict[i]["moveType"]
-        # print(f"{i}: {move}")
+    for i in moveDict:
+        move = moveDict[i]
+        moveType = moveDict[i]["moveType"]
+        print(f"{i}: {move}")
 
     print("--")
     print(finalResult)
@@ -760,7 +781,7 @@ def parseInput(input):
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
 # capcomString = "cr.hp(1) > qcf+lk, cr.lp > Spinning Bird Kick"
-parseInput("cr.hp(1) > qcf+lk, cr.lp > shoryu")
+parseInput("cr.hp(1) > qcf+lk, cr.lp > HP shoryu, 3HK")
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
 # parseInput(numpadString)
