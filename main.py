@@ -713,12 +713,12 @@ def parseInput(input):
             dirAbv = notation["directions"][direction]["abbreviation"]
 
             if (dirAbv.lower() != "n"):
-                resultArr.append(f"[[File:{dirAbv}.png]] + ")
+                resultArr.append(f"[[File:{dirAbv}.png]] ")
+                resultArr.append(f"+ ")
 
-            if (str(numOfHits) == "0"):
-                resultArr.append(f"[[File:{btn}.png]] ")
-            else:
-                resultArr.append(f"[[File:{btn}.png]] ({numOfHits}) ")
+            resultArr.append(f"[[File:{btn}.png]] ")
+            if (str(numOfHits) != "0"):
+                resultArr.append(f"({numOfHits}) ")
 
         elif (currentMoveType == "motion"):
             motionNum = moveDictEntry["input"]["motions"]["num"]
@@ -727,19 +727,27 @@ def parseInput(input):
             isPreviousElementBtn = False
             newBtn = ""
 
+            print(resultArr)
             if (btn[0] == "*"):
                 for key in notation["buttons"]["sf"]:
                     if (resultArr != []):
-                        if key.lower() in resultArr[-1]:
+                        print(resultArr[-1])
+                        if key.lower() in resultArr[-1].lower():
                             isPreviousElementBtn = True
                             newBtn = (resultArr[-1])[7:9]
                             del resultArr[-1]
+            else:
+                print(btn)
 
             if (isPreviousElementBtn):
-                resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{newBtn}.png]] ")
+                resultArr.append(f"[[File:{motionAbv}.png]] ")
+                resultArr.append(f"+ ")
+                resultArr.append(f"[[File:{newBtn}.png]] ")
             else:
                 btn = btn[-1]
-                resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
+                resultArr.append(f"[[File:{motionAbv}.png]] ")
+                resultArr.append(f"+ ")
+                resultArr.append(f"[[File:{btn}.png]] ")
         elif (currentMoveType == "charge"):
             hold = moveDictEntry["input"]["directions"]["hold"]["dirNums"][0]
             release = moveDictEntry["input"]["directions"]["release"]["dirNums"][0]
@@ -755,8 +763,10 @@ def parseInput(input):
             else:
                 releaseAbv = release
 
-            resultArr.append(f"[ [[File:{holdAbv}.png]] ] [[File:{releaseAbv}.png]] + [[File:{btn}.png]] ")
-
+            resultArr.append(f"[ [[File:{holdAbv}.png]] ] ")
+            resultArr.append(f"[[File:{releaseAbv}.png]] ")
+            resultArr.append(f"+ ")
+            resultArr.append(f"[[File:{btn}.png]] ")
         elif (currentMoveType == ","):
             resultArr[-1] = (resultArr[-1])[0:len(resultArr[-1])-1]
             resultArr.append(", ")
@@ -776,14 +786,16 @@ def parseInput(input):
         # moveType = moveDict[i]["moveType"]
         # print(f"{i}: {move}")
 
-    # print("--")
-    # print(finalResult)
+    print("--")
+    print(finalResult)
     print("----\n")
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
 # capcomString = "cr.hp(1) > qcf+lk, cr.lp > Spinning Bird Kick"
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > HP shoryu, 3HK")
+
 parseInput("LP fireball > MK fireball > HK lightning legs > shoryu")
+
 # parseInput("LP fireball > MK fireball > HK lightning legs > shoryu, spinning bird kick > HK")
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
