@@ -206,15 +206,6 @@ customTranslations = {
         },
         "moveType" : "motion",
         "aliases" : ["fireball", "fb", "hadouken"]
-    },
-    "big big brongus": {
-        "input" : {
-            "numpadInput" : "236",
-            "strength" : "*",
-            "attack" : "Punch"
-        },
-        "moveType" : "motion",
-        "aliases" : ["fireball", "fb", "hadouken"]
     }
 }
 
@@ -307,9 +298,9 @@ def parseInput(input):
             moveDict[i]["moveNotation"] = parseMoveNotation(move)
 
     # if there are any custom move definitions that need to be turned into notation,
-    # their indexes in moveDict (and later the name of the custom move if there's a match in the customTranslations dict) are stored in the dict "cmi"
+    # their indexes in moveDict are stored in the dict "cmi"
     cmi = {}
-    customPhraseNum = -1     # used for following variable "cmi". goes up when the next word being inspected in moveDict is not a custom word, so we know when to start categorizing the next custom move
+    customPhraseNum = 1 # goes up when the next word being inspected in moveDict is not a custom word, so we know when to start categorizing the next custom move
     # if there are multiple moves with moveType "custom?" occuring in moveDict sequentially, they must be referencing one move with multiple words (ie. "lightning legs")
     # to catch this, a "streak" is kept for as long as we keep running into concurrent "custom" values
     customStreak = False
@@ -317,10 +308,15 @@ def parseInput(input):
     # when the streak ends, continue combing the list for the next occurence of a custom definition
     for i in moveDict:
         move = moveDict[i]
-        moveType = moveDict[i]["moveType"]
-        # print(f"{i}: {move}")
+        moveNotation = moveDict[i]["moveNotation"]
 
-        if (moveType == "custom?"):
+        if (moveNotation == "custom"):
+            # print(f"    Custom streak?: {customStreak}")
+            # print(f"    Streak just incremented?: {streakJustIncremented}")
+            # print(f"    Custom phrase num?: {customPhraseNum}")
+
+            if (streakJustIncremented):
+                streakJustIncremented = False
             if customStreak:
                 cmi[f"custom{customPhraseNum}"]["indexes"].append(i)
             else:
@@ -336,6 +332,10 @@ def parseInput(input):
                 if (not streakJustIncremented):
                     customPhraseNum += 1
                     streakJustIncremented = True
+                else:
+                    streakJustIncremented = False
+
+    customPhraseNum -= 1
 
     # after looping through moveDict move types to populate cmi with custom move definition instances and list indexes, this loop is for
     # finding which custom moves are meant to take the space of those indexes by checking to see if there are any matches between
@@ -381,11 +381,10 @@ def parseInput(input):
 
         return(moveDict)
 
-
     if (cmi != {}):
         moveDict = trimDict(customPhraseNum)
 
-    # fix indexes/more moredict info pop?
+    # remove null'd elements from trimDict. fix indexes later?
     for i in range(len(moveDict)):
         if (moveDict[i] == "toDel"):
             del (moveDict[i])
@@ -408,7 +407,6 @@ def parseInput(input):
         moveNotation = moveDict[i]["moveNotation"]
         moveDict[i]["input"] = {}
 
-        # can be changed to look more like non-custom dicts
         if (moveNotation == "custom"):
             m = move
             move = str(customTranslations[m]["input"]["numpadInput"]) + customTranslations[m]["input"]["strength"][0] + customTranslations[m]["input"]["attack"][0]
@@ -731,14 +729,16 @@ def parseInput(input):
 
             if (btn[0] == "*"):
                 for key in notation["buttons"]["sf"]:
-                    if key.lower() in resultArr[-1]:
-                        isPreviousElementBtn = True
-                        newBtn = (resultArr[-1])[7:9]
-                        del resultArr[-1]
+                    if (resultArr != []):
+                        if key.lower() in resultArr[-1]:
+                            isPreviousElementBtn = True
+                            newBtn = (resultArr[-1])[7:9]
+                            del resultArr[-1]
 
             if (isPreviousElementBtn):
                 resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{newBtn}.png]] ")
             else:
+                btn = btn[-1]
                 resultArr.append(f"[[File:{motionAbv}.png]] + [[File:{btn}.png]] ")
         elif (currentMoveType == "charge"):
             hold = moveDictEntry["input"]["directions"]["hold"]["dirNums"][0]
@@ -766,22 +766,25 @@ def parseInput(input):
 
     finalResult = ""
     for move in resultArr:
+        print(move)
         finalResult += move
         # print(move)
 
     # print("--")
-    for i in moveDict:
-        move = moveDict[i]
-        moveType = moveDict[i]["moveType"]
-        print(f"{i}: {move}")
+    # for i in moveDict:
+        # move = moveDict[i]
+        # moveType = moveDict[i]["moveType"]
+        # print(f"{i}: {move}")
 
-    print("--")
-    print(finalResult)
+    # print("--")
+    # print(finalResult)
     print("----\n")
 
 numpadString = "2HP(1) > 236LK, 2LP > [2]8LK"
 # capcomString = "cr.hp(1) > qcf+lk, cr.lp > Spinning Bird Kick"
-parseInput("cr.hp(1) > qcf+lk, cr.lp > HP shoryu, 3HK")
+# parseInput("cr.hp(1) > qcf+lk, cr.lp > HP shoryu, 3HK")
+parseInput("LP fireball > MK fireball > HK lightning legs > shoryu")
+# parseInput("LP fireball > MK fireball > HK lightning legs > shoryu, spinning bird kick > HK")
 # parseInput("cr.hp(1) > qcf+lk, cr.lp > [d]u+lk, lightning legs, shoryuken")
 # imageCreation(toTranslate)
 # parseInput(numpadString)
